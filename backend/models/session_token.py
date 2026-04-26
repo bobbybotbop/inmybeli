@@ -13,7 +13,7 @@ class SessionToken(db.Model):
 
     token = db.Column(db.Text, unique=True, nullable=False)
     expiresAt = db.Column(db.DateTime, nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), unique = True, nullable=False)
     created_at = db.Column(DateTime(timezone=True), default=get_utc_now, nullable=False)
 
     def __init__(self, **kwargs):
