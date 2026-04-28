@@ -12,11 +12,13 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
     password_hash = db.Column(db.Text, nullable=False)
-
     name = db.Column(db.Text, nullable=False)
     username = db.Column(db.Text, unique=True, index=True, nullable=False)
-
     created_at = db.Column(DateTime(timezone=True), default=get_utc_now, nullable=False)
+    cookbooks = db.relationship('Cookbook', backref='user', cascade='all, delete-orphan')
+
+    # delete tokens when user is deleted.
+    tokens = db.relationship('SessionToken', cascade="all, delete-orphan", backref='user')
 
     def __init__(self, **kwargs):
         """Initialize a user with password_hash, name, and username."""

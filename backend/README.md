@@ -15,10 +15,10 @@ pip install -r requirements.txt
 
 ## Run
 
-From `backend/`:
+From `root`:
 
 ```bash
-python app.py
+python -m backend.app
 ```
 
 The server runs on `http://127.0.0.1:5000`.
@@ -46,4 +46,3 @@ curl -X POST http://127.0.0.1:5000/api/login ^
 ```bash
 curl http://127.0.0.1:5000/api/users/1
 ```
-
