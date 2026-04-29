@@ -25,8 +25,8 @@ def create_app():
     
     # Register blueprints
     app.register_blueprint(users_bp, url_prefix="/api/users")
-    app.register_blueprint(friends_bp, url_prefix="/api/users")
-    app.register_blueprint(cookbooks_bp, url_prefix= "/api/users")
+    app.register_blueprint(friends_bp, url_prefix="/api/friends")
+    app.register_blueprint(cookbooks_bp, url_prefix= "/api/cookbooks")
     app.register_blueprint(recipes_bp, url_prefix="/api")
     
     return app

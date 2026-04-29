@@ -1,4 +1,4 @@
-from backend.routes.dependecies import (
+from backend.routes.dependencies import (
     Blueprint,
     request,
     db,

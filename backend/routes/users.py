@@ -1,4 +1,4 @@
-from backend.routes.dependecies import (
+from backend.routes.dependencies import (
     Blueprint, 
     request, 
     check_password_hash, 
@@ -14,7 +14,8 @@ from backend.routes.dependecies import (
     CreateAccountSchema,
     LoginSchema,
     AutoLoginSchema,
-    require_auth
+    require_auth,
+    g
 )
 
 users_bp = Blueprint("users", __name__)
@@ -124,20 +125,21 @@ def auto_login():
         }
     )
 
-@users_bp.get("/users/<int:user_id>/")
+@users_bp.get("/")
 @require_auth
-def get_user(user_id: int):
+def get_user():
     """
     Get user information by user_id.
     
     Path params:
         user_id: int - The ID of the user to retrieve
     """
-    user = User.query.get(user_id)
-    if user is None:
-        return error("User not found", 404)
- 
+
     return success(
-        user.serialize(), 200
+        g.user.serialize(), 200
     )
  
+@users_bp.route('/tokens', methods=['GET'])
+def get_all_tokens():
+    tokens = SessionToken.query.all()
+    return success({"tokens" : [token.serialize() for token in tokens]}, 200)

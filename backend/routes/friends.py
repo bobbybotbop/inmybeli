@@ -1,4 +1,4 @@
-from backend.routes.dependecies import (
+from backend.routes.dependencies import (
     Blueprint,
     request,
     db,
@@ -14,9 +14,9 @@ from backend.routes.dependecies import (
 
 friends_bp = Blueprint("friends", __name__)
 
-@friends_bp.get("/<int:user_id>/friends/")
+@friends_bp.get("/")
 @require_auth
-def get_friends(user_id):
+def get_friends():
     """
     Get all the friends for user
     """    
@@ -24,32 +24,47 @@ def get_friends(user_id):
 
     return success(
         {
-        "user_id": user_id,
+        "user_id": g.user.id,
         "friends": [{"id": f.id, "username": f.username} for f in friends]
         }, 200
     )
 
 
-@friends_bp.get("/<int:user_id>/friends/pending/")
+@friends_bp.get("/pending/received/")
 @require_auth
-def get_pending_requests(user_id):
+def get_pending_received():
     """
-    Get all pending friend requests for user
+    Get all receieved requests to be friends
     """
-    pending = g.user.get_pending_requests()
+    pending_users = g.user.get_pending_recieved_requests()
 
-    return success(
-        {
-        "user_id": user_id,
-        "pending_requests": [
-            {"id": p.id, "username": p.username} for p in pending
+    return success({
+        "user_id": g.user.id,
+        "received_pending_requests": [
+            {"id": u.id, "username": u.username, "name": u.name}
+            for u in pending_users
         ]
-        }, 200
-    )
+    }, 200)
 
-@friends_bp.get("/<int:user_id>/friends/search/<string:name>")
+@friends_bp.get("/pending/sent/")
 @require_auth
-def search_users(user_id, name):
+def get_pending_sent():
+    """
+    Get all sent requests to be friends
+    """
+    pending_users = g.user.get_pending_sent_requests()
+
+    return success({
+        "user_id": g.user.id,
+        "sent_pending_requests": [
+            {"id": u.id, "username": u.username, "name": u.name}
+            for u in pending_users
+        ]
+    }, 200)
+
+@friends_bp.get("/search/<string:name>")
+@require_auth
+def search_users(name):
     """
     Returns top 20 users that start with specified string
     """
@@ -57,40 +72,43 @@ def search_users(user_id, name):
         User.username.ilike(f"%{name}%")
     ).all()
     
-    return success({'results': [r.to_dict() for r in results]}, 200)
+    return success({'results': [r.serialize() for r in results]}, 200)
 
-@friends_bp.post("/<int:user_id>/friends/request/")
+@friends_bp.post("/request/")
 @require_auth
-def send_friend_request(user_id):
+def send_friend_request():
     """
     Send a friend request to the user
     """
     schema = FriendRequestSchema()
-
+ 
     try:
         data = schema.load(request.get_json(silent=True) or {})
     except ValidationError as err:
         return error(err.messages, 400)
-
-    friendId = data["friend_id"]
-
-    if g.user.id == friendId:
+ 
+    friend_id = data["friend_id"]
+ 
+    if g.user.id == friend_id:
         return error("Cannot be friends with yourself", 400)
-
-    friend = User.query.get(friendId)
-
+ 
+    friend = User.query.get(friend_id)
+ 
     if not friend:
         return error("Friend not found", 404)
-
-    g.user.send_friend_request(friend)
-    db.session.commit()
+ 
+    try:
+        g.user.send_friend_request(friend)
+        db.session.commit()
+    except ValueError as err:
+        return error(str(err), 400)
     
     return success({'success': True, 'message': 'Friend request sent'}, 201)
 
 
-@friends_bp.post("/<int:user_id>/friends/accept/")
+@friends_bp.post("/accept/")
 @require_auth
-def accept_friend_request(user_id):
+def accept_friend_request():
     """
     Accepting a friend request to the user
     """
@@ -110,21 +128,35 @@ def accept_friend_request(user_id):
     if not friend:
         return error("Friend not found", 404)
     
-    g.user.accept_friend_request(friend)
-    db.session.commit()
+    try:
+        g.user.accept_friend_request(friend)
+        db.session.commit()
+    except ValueError as err:
+        return error(str(err), 400)
     
     return success({'success': True, 'message': 'Friend request accepted'}, 200)
 
 
-@friends_bp.delete('/<int:user_id>/friends/<int:friend_id>/')
+@friends_bp.delete('/<int:friend_id>/')
 @require_auth
-def remove_friend(user_id, friend_id):
+def remove_friend(friend_id):
     """
-    Deleting a friend
+    Delete a friend
     """
+    if g.user.id == friend_id:
+        return error("Cannot remove yourself", 400)
+    
+    friend = User.query.get(friend_id)
+    if not friend:
+        return error("Friend not found", 404)
+    
+    # Get friendship with enforced ordering (user_id < friend_id)
+    smaller_id = min(g.user.id, friend_id)
+    larger_id = max(g.user.id, friend_id)
+    
     friendship = Friendship.query.filter_by(
-        friend_id=friend_id,
-        user_id=user_id,
+        user_id=smaller_id,
+        friend_id=larger_id,
         status='accepted'
     ).first()
     
@@ -137,19 +169,64 @@ def remove_friend(user_id, friend_id):
     return success({'success': True, 'message': 'Friend removed'}, 200)
 
 
-@friends_bp.get('/<int:user_id>/friends/<int:friend_id>/')
+@friends_bp.get('/<int:friend_id>/')
 @require_auth
-def check_friendship(user_id, friend_id):
+def check_status(friend_id):
     """
-    Checks if user and friend are existing friends already
+    Returns status of relation between two users
     """
-    friendship = Friendship.query.filter(
-        db.or_(
-            db.and_(Friendship.user_id == user_id, Friendship.friend_id == friend_id),
-            db.and_(Friendship.user_id == friend_id, Friendship.friend_id == user_id)
-        ),
-        Friendship.status == 'accepted'
+    if g.user.id == friend_id:
+        return error("Cannot check friendship with yourself", 400)
+    
+    friend = User.query.get(friend_id)
+    if not friend:
+        return error("Friend not found", 404)
+    
+    # Use the helper method from User model
+    is_friend = g.user.is_friends_with(friend)
+    
+    return success({'user_id': g.user.id, 'friend_id': friend_id, 'is_friend': is_friend}, 200)
+
+@friends_bp.post("/decline/")
+@require_auth
+def decline_friend_request():
+    """
+    Decline a pending friend request
+    """
+    schema = FriendRequestSchema()
+ 
+    try:
+        data = schema.load(request.get_json(silent=True) or {})
+    except ValidationError as err:
+        return error(err.messages, 400)
+    
+    friend_id = data["friend_id"]
+    
+    if g.user.id == friend_id:
+        return error("Cannot decline your own request", 400)
+    
+    friend = User.query.get(friend_id)
+    if not friend:
+        return error("Friend not found", 404)
+    
+    # Get friendship with enforced ordering
+    smaller_id = min(g.user.id, friend_id)
+    larger_id = max(g.user.id, friend_id)
+    
+    friendship = Friendship.query.filter_by(
+        user_id=smaller_id,
+        friend_id=larger_id,
+        status='pending'
     ).first()
     
-    is_friend = friendship is not None
-    return {'user_id': user_id, 'friend_id': friend_id, 'is_friend': is_friend}, 200
+    if not friendship:
+        return error("No pending friend request found", 404)
+    
+    # Can only decline if you are NOT the requester
+    if friendship.requester_id == g.user.id:
+        return error("You can only decline requests sent to you", 400)
+    
+    db.session.delete(friendship)
+    db.session.commit()
+    
+    return success({'success': True, 'message': 'Friend request declined'}, 200)

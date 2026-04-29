@@ -1,4 +1,4 @@
-from backend.routes.dependecies import (
+from backend.routes.dependencies import (
     Blueprint,
     request,
     db,
@@ -16,26 +16,25 @@ from backend.routes.dependecies import (
 
 cookbooks_bp = Blueprint("cookbooks", __name__)
 
-
-@cookbooks_bp.get("/<int:user_id>/cookbooks/")
+@cookbooks_bp.get("/")
 @require_auth
-def get_all_cookbooks(user_id):
+def get_all_cookbooks():
     """
     Get all cookbooks for the current user
     """
-    cookbooks = Cookbook.query.filter_by(creator_id=user_id).all()
+    cookbooks = Cookbook.query.filter_by(creator_id=g.user.id).all()
     
     return success(
         {
-            "user_id": user_id,
+            "user_id": g.user.id,
             "cookbooks": [c.simple_serialize() for c in cookbooks]
         }, 200
     )
 
 
-@cookbooks_bp.post("/<int:user_id>/cookbooks/")
+@cookbooks_bp.post("/")
 @require_auth
-def create_cookbook(user_id):
+def create_cookbook():
     """
     Create a new cookbook
     """
@@ -47,7 +46,7 @@ def create_cookbook(user_id):
         return error(err.messages, 400)
     
     cookbook = Cookbook(
-        creator_id=user_id,
+        creator_id=g.user.id,
         name=data["name"],
         description=data.get("description")
     )
@@ -64,9 +63,9 @@ def create_cookbook(user_id):
     )
 
 
-@cookbooks_bp.get("/<int:user_id>/cookbooks/<int:cookbook_id>/")
+@cookbooks_bp.get("/<int:cookbook_id>/")
 @require_auth
-def get_cookbook(user_id, cookbook_id):
+def get_cookbook(cookbook_id):
     """
     Get a specific cookbook by ID
     """
@@ -82,16 +81,16 @@ def get_cookbook(user_id, cookbook_id):
     )
 
 
-@cookbooks_bp.put("/<int:user_id>/cookbooks/<int:cookbook_id>/")
+@cookbooks_bp.put("/<int:cookbook_id>/")
 @require_auth
-def update_cookbook(user_id, cookbook_id):
+def update_cookbook(cookbook_id):
     """
     Update description or name of existing cookbook
     """
     cookbook = Cookbook.query.get(cookbook_id)
     
     # users are not allowed to look at others cookbooks
-    if not cookbook or (cookbook.creator_id != user_id):
+    if not cookbook or (cookbook.creator_id != g.user.id):
         return error("Cookbook not found", 404)
     
     schema = UpdateCookbookSchema()
@@ -117,15 +116,15 @@ def update_cookbook(user_id, cookbook_id):
     )
 
 
-@cookbooks_bp.delete("/<int:user_id>/cookbooks/<int:cookbook_id>/")
+@cookbooks_bp.delete("/<int:cookbook_id>/")
 @require_auth
-def delete_cookbook(user_id, cookbook_id):
+def delete_cookbook(cookbook_id):
     """
     Delete a cookbook
     """
     cookbook = Cookbook.query.get(cookbook_id)
     
-    if not cookbook or (cookbook.creator_id != user_id):
+    if not cookbook or (cookbook.creator_id != g.user.id):
         return error("Cookbook not found", 404)
     
     db.session.delete(cookbook)
@@ -139,15 +138,15 @@ def delete_cookbook(user_id, cookbook_id):
     )
 
 
-@cookbooks_bp.post("/<int:user_id>/cookbooks/<int:cookbook_id>/recipes/")
+@cookbooks_bp.post("/<int:cookbook_id>/recipes/")
 @require_auth
-def add_recipe_to_cookbook(user_id, cookbook_id):
+def add_recipe_to_cookbook(cookbook_id):
     """
     Add a recipe to a cookbook
     """
     cookbook = Cookbook.query.get(cookbook_id)
     
-    if not cookbook or (cookbook.creator_id != user_id):
+    if not cookbook or (cookbook.creator_id != g.user.id):
         return error("Cookbook not found", 404)
     
     schema = AddRecipeToCookbookSchema()
@@ -177,15 +176,15 @@ def add_recipe_to_cookbook(user_id, cookbook_id):
     )
 
 
-@cookbooks_bp.delete("/<int:user_id>/cookbooks/<int:cookbook_id>/recipes/<int:recipe_id>/")
+@cookbooks_bp.delete("/<int:cookbook_id>/recipes/<int:recipe_id>/")
 @require_auth
-def remove_recipe_from_cookbook(user_id, cookbook_id, recipe_id):
+def remove_recipe_from_cookbook(cookbook_id, recipe_id):
     """
     Remove a recipe from a cookbook
     """
     cookbook = Cookbook.query.get(cookbook_id)
     
-    if not cookbook or (cookbook.creator_id != user_id):
+    if not cookbook or (cookbook.creator_id != g.user.id):
         return error("Cookbook not found", 404)
     
     recipe = Recipe.query.get(recipe_id)
@@ -206,4 +205,3 @@ def remove_recipe_from_cookbook(user_id, cookbook_id, recipe_id):
             "cookbook": cookbook.serialize()
         }, 200
     )
-
