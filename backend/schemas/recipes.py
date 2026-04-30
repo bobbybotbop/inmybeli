@@ -18,7 +18,7 @@ class CreateRecipeSchema(Schema):
         allow_none=True,
         validate=validate.Length(max=2000)
     )
-    image = ImageField(required=False)
+    # image = ImageField(required=False)
     time_minutes = fields.Int(
         required=False,
         allow_none=True,
@@ -77,7 +77,7 @@ class UpdateRecipeSchema(Schema):
         allow_none=True,
         validate=validate.Length(max=2000)
     )
-    image = ImageField(required=False)
+    # image = ImageField(required=False)
     time_minutes = fields.Int(
         required=False,
         allow_none=True,

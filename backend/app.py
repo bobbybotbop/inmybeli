@@ -6,6 +6,8 @@ from backend.routes import users_bp, friends_bp, cookbooks_bp, recipes_bp
 def create_app():
     """Create and configure the Flask application."""
     app = Flask(__name__)
+
+    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
     
     # Configuration with enviromental variables
     backend_dir = os.path.dirname(os.path.abspath(__file__))

@@ -142,70 +142,49 @@ def get_recipe(recipe_id):
     return success(recipe.serialize(), 200)
 
 
-@recipes_bp.put("/recipes/<int:recipe_id>/")
+@recipes_bp.post("/recipes/<int:recipe_id>/")
 @require_auth
 def update_recipe(recipe_id):
     """Update existing recipe. Only creator can update."""
-    
     recipe = Recipe.query.get(recipe_id)
+
     if recipe is None:
         return error("Recipe not found", 404)
 
     if recipe.creator_id != g.user.id:
         return error("Forbidden: you do not own this recipe", 403)
-
-    # Parse form data
-    form_data_dict = request.form.to_dict()
-    
-    # Handle JSON arrays (ingredients, instructions)
-    if 'ingredients' in form_data_dict:
-        try:
-            form_data_dict['ingredients'] = json.loads(form_data_dict['ingredients'])
-        except:
-            form_data_dict['ingredients'] = []
-    
-    if 'instructions' in form_data_dict:
-        try:
-            form_data_dict['instructions'] = json.loads(form_data_dict['instructions'])
-        except:
-            form_data_dict['instructions'] = []
-    
+        
     # Validate form data
     schema = UpdateRecipeSchema()
+    expected_fields = ['title', 'description', 'instructions', 'time_minutes', 'cuisine', 'servings', 'ingredients', 'instructions']
+    print('h')
+    raw_data = {field: request.form.get(field) for field in expected_fields if field in request.form}
+    print('s')
     try:
-        form_data = schema.load(form_data_dict)
+        # Pass only the form text to Marshmallow
+        form_data = schema.load(raw_data)
+
     except ValidationError as err:
         return error(err.messages, 400)
-    
-    # Handle image upload if provided
-    new_s3_key = None
-    old_s3_key = recipe.recipe_image_s3_key  # Store old key for deletion
-    
-    if 'image' in request.files:
-        file = request.files['image']
         
-        # Only process if file was actually selected
-        if file and file.filename != '':
-            if not allowed_file(file.filename):
-                return error("Invalid file type. Allowed: jpg, jpeg, png, gif, webp, heic, heif, svg", 400)
+    new_s3_key = None
+    old_s3_key = recipe.recipe_image_s3_key  
+    file = request.files.get("image")
+    if file and file.filename != '':
+        try:      
+            # Upload to S3
+            upload_result = upload_to_s3(file, folder="recipes/")
             
-            try:
-                # Reset file pointer before upload
-                file.seek(0)
-                
-                # Upload to S3
-                upload_result = upload_to_s3(file, folder="recipes/")  # Changed from "recipe/" to "recipes/"
-                
-                if not upload_result['success']:
-                    return error(f"Failed to upload image: {upload_result['error']}", 500)
-                
-                new_s3_key = upload_result['s3_key']
-                form_data['recipe_image_url'] = upload_result['s3_url']
-                form_data['recipe_image_s3_key'] = new_s3_key
-                
-            except Exception as e:
-                return error(f"Upload error: {str(e)}", 500)
-
+            if not upload_result['success']:
+                return error(f"Failed to upload image", 500)
+            
+            new_s3_key = upload_result['s3_key']
+            form_data['recipe_image_url'] = upload_result['s3_url']
+            form_data['recipe_image_s3_key'] = new_s3_key
+            
+        except Exception as e:
+            return error(f"Upload error: {str(e)}", 500)
+    print('finished file upload')
     # Update recipe
     try:
         for field, value in form_data.items():
@@ -214,9 +193,11 @@ def update_recipe(recipe_id):
 
         db.session.commit()
         
+        print('trying to delete file')
         # Delete old image AFTER successful commit
         if new_s3_key and old_s3_key and old_s3_key != new_s3_key:
             delete_from_s3(old_s3_key)
+
         
     except Exception as e:
         db.session.rollback()
