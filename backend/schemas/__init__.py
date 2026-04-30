@@ -14,7 +14,7 @@ __all__ = [
     "FriendRequestSchema",
     "CreateCookbookSchema",
     "UpdateCookbookSchema",
-    "AddRecipeToCookbookSchema"
+    "AddRecipeToCookbookSchema",
     "CreateRecipeSchema",
     "UpdateRecipeSchema",
     "CreateReviewSchema",
