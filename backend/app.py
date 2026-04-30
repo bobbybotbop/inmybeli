@@ -3,7 +3,6 @@ import os
 from backend.models import db
 from backend.routes import users_bp, friends_bp, cookbooks_bp, recipes_bp
 
- 
 def create_app():
     """Create and configure the Flask application."""
     app = Flask(__name__)

@@ -2,6 +2,7 @@
 Schemas for user endpoints
 """
 from marshmallow import Schema, fields, validate
+from backend.schemas.helper import ImageField
  
 class CreateAccountSchema(Schema):
     """Schema for creating a new user account"""
@@ -20,6 +21,7 @@ class CreateAccountSchema(Schema):
         validate=validate.Length(min=8),
         error_messages={"required": "Password is required"}
     )
+    profile_picture = ImageField(required=False)
  
  
 class LoginSchema(Schema):

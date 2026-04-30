@@ -15,17 +15,21 @@ class User(db.Model):
     password_hash = db.Column(db.Text, nullable=False)
     name = db.Column(db.Text, nullable=False)
     username = db.Column(db.Text, unique=True, index=True, nullable=False)
+    profile_picture_url = db.Column(db.Text, nullable = False)
     created_at = db.Column(DateTime(timezone=True), default=get_utc_now, nullable=False)
     cookbooks = db.relationship('Cookbook', backref='user', cascade='all, delete-orphan')
+    profile_picture_s3_key = db.Column(db.Text, nullable = True)
 
     # delete tokens when user is deleted.
     tokens = db.relationship('SessionToken', cascade="all, delete-orphan", backref='user')
 
     def __init__(self, **kwargs):
-        """Initialize a user with password_hash, name, and username."""
+        """Initialize a user with password_hash, name, and username"""
         self.password_hash = kwargs.get("password_hash")
         self.name = kwargs.get("name")
         self.username = kwargs.get("username")
+        self.profile_picture_url = kwargs.get("profile_picture_url")
+        self.profile_picture_s3_key = kwargs.get("profile_picture_s3_key")
 
     def _get_friendship_with(self, friend):
         """
@@ -148,5 +152,6 @@ class User(db.Model):
             "id": self.id,
             "name": self.name,
             "username": self.username,
+            "profile_url" : self.profile_picture_url,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

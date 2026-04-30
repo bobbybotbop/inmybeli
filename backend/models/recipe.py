@@ -15,7 +15,8 @@ class Recipe(db.Model):
     creator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     title = db.Column(db.Text, nullable=False)
     description = db.Column(db.Text, nullable=True)
-    image_url = db.Column(db.Text, nullable=True)
+    recipe_image_url = db.Column(db.Text, nullable=False)
+    recipe_image_s3_key = db.Column(db.Text, nullable=False)
     time_minutes = db.Column(db.Integer, nullable=True)
     cuisine = db.Column(db.Text, nullable=True)
     servings = db.Column(db.Integer, nullable=True)
@@ -35,7 +36,8 @@ class Recipe(db.Model):
         self.creator_id = kwargs.get("creator_id")
         self.title = kwargs.get("title")
         self.description = kwargs.get("description")
-        self.image_url = kwargs.get("image_url")
+        self.recipe_image_url = kwargs.get("recipe_image_url")
+        self.recipe_image_s3_key = kwargs.get("recipe_image_s3_key")
         self.time_minutes = kwargs.get("time_minutes")
         self.cuisine = kwargs.get("cuisine")
         self.servings = kwargs.get("servings")
@@ -49,7 +51,7 @@ class Recipe(db.Model):
             "creator_id": self.creator_id,
             "title": self.title,
             "description": self.description,
-            "image_url": self.image_url,
+            "recipe_image_url": self.recipe_image_url,
             "time_minutes": self.time_minutes,
             "cuisine": self.cuisine,
             "servings": self.servings,
@@ -65,7 +67,7 @@ class Recipe(db.Model):
             "id": self.id,
             "creator_id": self.creator_id,
             "title": self.title,
-            "image_url": self.image_url,
+            "image_url": self.recipe_image_url,
             "time_minutes": self.time_minutes,
             "cuisine": self.cuisine,
         }

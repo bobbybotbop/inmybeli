@@ -15,45 +15,84 @@ from backend.routes.dependencies import (
     LoginSchema,
     AutoLoginSchema,
     require_auth,
-    g
+    g,
+    s3_client,
+    S3_BUCKET_NAME,
+    ALLOWED_EXTENSIONS,
+    delete_from_s3,
+    upload_to_s3,
+    DEFAULT_PFP
 )
+
 
 users_bp = Blueprint("users", __name__)
 
+@users_bp.post("/create")
 @users_bp.post("/create/")
 def create_account():
-    """
-    Create a new user account
-    """
+    """Endpoint for creating account"""   
     schema = CreateAccountSchema()
 
     try:
-        data = schema.load(request.get_json(silent=True) or {})
+        raw_data = request.form.to_dict() 
+        form_data = schema.load(raw_data)
     except ValidationError as err:
         return error(err.messages, 400)
 
-    user = User(
-        name=data["name"],
-        username=data["username"],
-        password_hash=generate_password_hash(data["password"]),
-    )
-    db.session.add(user)
-    
+    file = request.files.get("profile_picture")
+
+    uploaded_s3_key = None
+    profile_picture_url = DEFAULT_PFP
+
+    if file:
+        try:
+            s3_result = upload_to_s3(file, folder="pfp/")
+            if not s3_result["success"]:
+                msg = s3_result.get("error") or "Failed to upload profile picture"
+                return error(msg, 500)
+
+            uploaded_s3_key = s3_result["s3_key"]
+            profile_picture_url = s3_result["s3_url"]
+
+        except Exception as e:
+            return error(f"Upload error: {str(e)}", 500)
+
     try:
+        user = User(
+            name=form_data["name"],
+            username=form_data["username"],
+            password_hash=generate_password_hash(form_data["password"]),
+            profile_picture_url=profile_picture_url,
+            profile_picture_s3_key=uploaded_s3_key,
+        )
+
+        db.session.add(user)
+        db.session.flush()
+
+        session = SessionToken(
+            token=generate_token(),
+            user_id=user.id,
+        )
+
+        db.session.add(session)
         db.session.commit()
+
     except IntegrityError:
         db.session.rollback()
+        if uploaded_s3_key:
+            delete_from_s3(uploaded_s3_key)
         return error("Username already exists", 400)
-    
-    # create token session
-    session = SessionToken(token=generate_token(), user_id = user.id)
-    db.session.add(session)
-    db.session.commit()
+
+    except Exception as e:
+        db.session.rollback()
+        if uploaded_s3_key:
+            delete_from_s3(uploaded_s3_key)
+        return error(f"Account creation failed: {str(e)}", 500)
 
     return success(
         {
-            "user" : user.serialize(), 
-            "session_token" : session.token 
+            "user": user.serialize(),
+            "session_token": session.token,
         },
         201,
     )

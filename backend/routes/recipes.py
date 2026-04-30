@@ -13,6 +13,9 @@ from backend.routes.dependencies import (
     CreateRecipeSchema,
     UpdateRecipeSchema,
     CreateReviewSchema,
+    upload_to_s3,
+    delete_from_s3,
+    allowed_file
 )
 
 recipes_bp = Blueprint("recipes", __name__)
@@ -21,27 +24,63 @@ recipes_bp = Blueprint("recipes", __name__)
 @require_auth
 def create_recipe():
     """
-    Create =new recipe owned by the current user.
+    Create new recipe owned by the current user.
     """
     schema = CreateRecipeSchema()
+
     try:
-        data = schema.load(request.get_json(silent=True) or {})
+        raw_data = request.form.to_dict()
+        # Remove ingredients and instructions before schema validation since they'll be empty lists
+        raw_data.pop('ingredients', None)
+        raw_data.pop('instructions', None)
+        form_data = schema.load(raw_data)
     except ValidationError as err:
         return error(err.messages, 400)
 
-    recipe = Recipe(
-        creator_id=g.user.id,
-        title=data["title"],
-        description=data.get("description"),
-        image_url=data.get("image_url"),
-        time_minutes=data.get("time_minutes"),
-        cuisine=data.get("cuisine"),
-        servings=data.get("servings"),
-        ingredients=data.get("ingredients", []),
-        instructions=data.get("instructions", []),
-    )
-    db.session.add(recipe)
-    db.session.commit()
+    file = request.files.get("image")
+
+    recipe_image_s3_key = None
+    recipe_image_url = None
+    
+    # Set ingredients and instructions to empty lists
+    form_data['ingredients'] = []
+    form_data['instructions'] = []
+
+    if file:
+        try:
+            s3_result = upload_to_s3(file, folder="recipe/")
+            if not s3_result["success"]:
+                msg = s3_result.get("error") or "Failed to upload recipe image"
+                return error(msg, 500)
+
+            recipe_image_s3_key = s3_result["s3_key"]
+            recipe_image_url = s3_result["s3_url"]
+
+        except Exception as e:
+            return error(f"Upload error: {str(e)}", 500)
+    
+
+    try:
+        recipe = Recipe(
+            creator_id=g.user.id,
+            title=form_data["title"],
+            description=form_data.get("description"),
+            recipe_image_url=recipe_image_url,
+            recipe_image_s3_key=recipe_image_s3_key,
+            time_minutes=form_data.get("time_minutes"),
+            cuisine=form_data.get("cuisine"),
+            servings=form_data.get("servings"),
+            ingredients=form_data.get("ingredients", []),
+            instructions=form_data.get("instructions", []),
+        )
+        db.session.add(recipe)
+        db.session.commit()
+
+    except Exception as e:
+        db.session.rollback()
+        if recipe_image_s3_key:
+            delete_from_s3(recipe_image_s3_key)
+        return error(f"Recipe creation failed: {str(e)}", 500)
 
     return success(recipe.serialize(), 201)
 
@@ -62,9 +101,8 @@ def get_recipe(recipe_id):
 @recipes_bp.put("/recipes/<int:recipe_id>/")
 @require_auth
 def update_recipe(recipe_id):
-    """
-    Update existing recipe. Only creator can update.
-    """
+    """Update existing recipe. Only creator can update."""
+    
     recipe = Recipe.query.get(recipe_id)
     if recipe is None:
         return error("Recipe not found", 404)
@@ -72,23 +110,80 @@ def update_recipe(recipe_id):
     if recipe.creator_id != g.user.id:
         return error("Forbidden: you do not own this recipe", 403)
 
+    # Parse form data
+    form_data_dict = request.form.to_dict()
+    
+    # Handle JSON arrays (ingredients, instructions)
+    if 'ingredients' in form_data_dict:
+        try:
+            form_data_dict['ingredients'] = json.loads(form_data_dict['ingredients'])
+        except:
+            form_data_dict['ingredients'] = []
+    
+    if 'instructions' in form_data_dict:
+        try:
+            form_data_dict['instructions'] = json.loads(form_data_dict['instructions'])
+        except:
+            form_data_dict['instructions'] = []
+    
+    # Validate form data
     schema = UpdateRecipeSchema()
     try:
-        data = schema.load(request.get_json(silent=True) or {})
+        form_data = schema.load(form_data_dict)
     except ValidationError as err:
         return error(err.messages, 400)
+    
+    # Handle image upload if provided
+    new_s3_key = None
+    old_s3_key = recipe.recipe_image_s3_key  # Store old key for deletion
+    
+    if 'image' in request.files:
+        file = request.files['image']
+        
+        # Only process if file was actually selected
+        if file and file.filename != '':
+            if not allowed_file(file.filename):
+                return error("Invalid file type. Allowed: jpg, jpeg, png, gif, webp, heic, heif, svg", 400)
+            
+            try:
+                # Reset file pointer before upload
+                file.seek(0)
+                
+                # Upload to S3
+                upload_result = upload_to_s3(file, folder="recipes/")  # Changed from "recipe/" to "recipes/"
+                
+                if not upload_result['success']:
+                    return error(f"Failed to upload image: {upload_result['error']}", 500)
+                
+                new_s3_key = upload_result['s3_key']
+                form_data['recipe_image_url'] = upload_result['s3_url']
+                form_data['recipe_image_s3_key'] = new_s3_key
+                
+            except Exception as e:
+                return error(f"Upload error: {str(e)}", 500)
 
-    for field in (
-        "title", "description", "image_url",
-        "time_minutes", "cuisine", "servings",
-        "ingredients", "instructions",
-    ):
-        if field in data:
-            setattr(recipe, field, data[field])
+    # Update recipe
+    try:
+        for field, value in form_data.items():
+            if value is not None:
+                setattr(recipe, field, value)
 
-    db.session.commit()
+        db.session.commit()
+        
+        # Delete old image AFTER successful commit
+        if new_s3_key and old_s3_key and old_s3_key != new_s3_key:
+            delete_from_s3(old_s3_key)
+        
+    except Exception as e:
+        db.session.rollback()
+        
+        # Clean up newly uploaded file if DB fails
+        if new_s3_key:
+            delete_from_s3(new_s3_key)
+        
+        return error(f"Recipe update failed: {str(e)}", 500)
+
     return success(recipe.serialize(), 200)
-
 
 @recipes_bp.delete("/recipes/<int:recipe_id>/")
 @require_auth
