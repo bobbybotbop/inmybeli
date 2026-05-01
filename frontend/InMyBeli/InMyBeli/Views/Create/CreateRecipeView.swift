@@ -104,50 +104,23 @@ struct CreateRecipeView: View {
 
     private var progressBar: some View {
         StepProgressBar(currentStep: currentStep, totalSteps: 3)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
     }
 
     // MARK: - Dish Name Row
 
     private var dishNameRow: some View {
-        HStack(spacing: 15) {
-            if currentStep == 1 {
-                TextField(
-                    "",
-                    text: $title,
-                    prompt: Text("Recipe name").foregroundColor(Theme.Palette.darkBrown.opacity(0.4))
-                )
-                .font(.system(size: 25, weight: .medium))
-                .foregroundStyle(Theme.Palette.darkBrown)
-                .tint(Theme.Palette.lightBrown)
-                .focused($titleFocused)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
-            } else {
-                Text(title.isEmpty ? "Recipe name" : title)
-                    .font(.system(size: 25, weight: .medium))
-                    .foregroundStyle(title.isEmpty ? Theme.Palette.darkBrown.opacity(0.4) : Theme.Palette.darkBrown)
-                    .frame(maxWidth: .infinity)
-                    .multilineTextAlignment(.center)
-            }
-
-            Button {
-                if currentStep == 1 { titleFocused = true } else { currentStep = 1 }
-            } label: {
-                VStack(spacing: 1) {
-                    Image(systemName: "pencil")
-                        .font(.system(size: 16))
-                        .foregroundColor(Theme.Palette.darkBrown)
-                    Text("Edit")
-                        .font(.system(size: 12, weight: .light))
-                        .foregroundColor(Color(hex: "888888"))
-                }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 4)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-        }
+        TextField(
+            "",
+            text: $title,
+            prompt: Text("Recipe name").foregroundColor(Theme.Palette.darkBrown.opacity(0.4))
+        )
+        .font(.system(size: 25, weight: .medium))
+        .foregroundStyle(Theme.Palette.darkBrown)
+        .tint(Theme.Palette.lightBrown)
+        .focused($titleFocused)
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Step 1: Basic Info
@@ -157,7 +130,7 @@ struct CreateRecipeView: View {
         imagePickerArea
 
         VStack(spacing: 20) {
-            inputField(label: "Estimate time to make", placeholder: "Enter a number...", text: $timeText, keyboard: .numberPad)
+            inputField(label: "Estimate time to make (minutes)", placeholder: "Enter a number...", text: $timeText, keyboard: .numberPad)
             inputField(label: "Servings", placeholder: "Enter a number...", text: $servingsText, keyboard: .numberPad)
             inputField(label: "Cuisine", placeholder: "Begin typing a cuisine...", text: $cuisine, keyboard: .default)
         }
@@ -503,6 +476,7 @@ struct AddStepSheet: View {
                     TextEditor(text: $description)
                         .font(.system(size: 15, weight: .light))
                         .foregroundColor(.black)
+                        .scrollContentBackground(.hidden)
                         .padding(10)
                         .frame(height: 112)
                         .background(Color(hex: "EFEFEF"))
