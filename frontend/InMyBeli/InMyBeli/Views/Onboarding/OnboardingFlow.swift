@@ -3,6 +3,7 @@ import SwiftUI
 private enum OnboardingRoute: Hashable {
     case createAccount
     case login
+    case cuisinePreferences
     case findFriends
 }
 
@@ -11,6 +12,7 @@ struct OnboardingFlow: View {
 
     @State private var path: [OnboardingRoute] = []
     @State private var pendingSession: AuthSession?
+    @State private var selectedCuisines: Set<String> = []
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -33,19 +35,28 @@ struct OnboardingFlow: View {
             CreateAccountView { authSession in
                 pendingSession = authSession
                 APIClient.shared.sessionToken = authSession.token
-                path.append(.findFriends)
+                path.append(.cuisinePreferences)
             }
         case .login:
             LoginView { authSession in
                 APIClient.shared.sessionToken = authSession.token
                 session.signIn(user: authSession.user, token: authSession.token)
             }
-        case .findFriends:
-            if let pending = pendingSession {
-                FindFriendsView(currentUser: pending.user, onFinish: {
-                    session.signIn(user: pending.user, token: pending.token)
-                })
+        case .cuisinePreferences:
+            CuisinePreferencesView { cuisines in
+                selectedCuisines = cuisines
+                path.append(.findFriends)
             }
+        case .findFriends:
+            FindFriendsView(
+                currentUser: pendingSession?.user
+                    ?? AppUser(id: 0, name: "", username: "", createdAt: nil),
+                onFinish: {
+                    if let pending = pendingSession {
+                        session.signIn(user: pending.user, token: pending.token)
+                    }
+                }
+            )
         }
     }
 }

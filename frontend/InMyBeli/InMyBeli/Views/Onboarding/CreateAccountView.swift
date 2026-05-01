@@ -20,8 +20,6 @@ struct CreateAccountView: View {
     private let fieldFill = Color(hex: "EFEFEF")
     private let placeholderGray = Color(hex: "888888")
     private let photoPlaceholder = Color(hex: "D9D9D9")
-    private let disabledFill = Color(hex: "F6F6F6")
-    private let disabledStroke = Color(hex: "A4A4A4")
 
     private var trimmedName: String { name.trimmingCharacters(in: .whitespaces) }
     private var trimmedUsername: String { username.trimmingCharacters(in: .whitespaces) }
@@ -45,13 +43,9 @@ struct CreateAccountView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                VStack(spacing: 10) {
-                    stepLabel
-                    progressBar
-                }
-                .frame(width: 320)
-                .frame(maxWidth: .infinity)
-                .padding(.top, 30)
+                StepProgressBar(currentStep: 1)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 30)
 
                 VStack(spacing: 75) {
                     VStack(spacing: 60) {
@@ -71,31 +65,6 @@ struct CreateAccountView: View {
         .scrollIndicators(.hidden)
         .scrollDismissesKeyboard(.interactively)
         .background(Theme.Palette.background)
-    }
-
-    // MARK: - Progress
-
-    private var stepLabel: some View {
-        (Text("Step 1").font(.system(size: 15, weight: .bold))
-         + Text(" of 3").font(.system(size: 15, weight: .light)))
-            .tracking(0.15)
-            .foregroundColor(.black)
-            .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var progressBar: some View {
-        HStack(spacing: 5) {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Theme.Palette.lightBrown)
-                .frame(width: 100, height: 12)
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(fieldFill)
-                .frame(width: 110, height: 12)
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(fieldFill)
-                .frame(width: 100, height: 12)
-        }
-        .frame(width: 320, height: 12)
     }
 
     // MARK: - Photo
@@ -121,8 +90,8 @@ struct CreateAccountView: View {
 
     private var inputsBlock: some View {
         VStack(spacing: 30) {
-            inputField(label: "Your Name") {
-                TextField("", text: $name, prompt: placeholder("First Name, Last Name"))
+            inputField(label: "Name") {
+                TextField("", text: $name, prompt: placeholder("Enter your full name"))
                     .textContentType(.name)
                     .focused($focusedField, equals: .name)
                     .submitLabel(.next)
@@ -130,7 +99,7 @@ struct CreateAccountView: View {
             }
 
             inputField(label: "Username") {
-                TextField("", text: $username, prompt: placeholder("Begin typing..."))
+                TextField("", text: $username, prompt: placeholder("Choose a username"))
                     .textContentType(.username)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -140,7 +109,7 @@ struct CreateAccountView: View {
             }
 
             inputField(label: "Password") {
-                SecureField("", text: $password, prompt: placeholder("Begin typing..."))
+                SecureField("", text: $password, prompt: placeholder("Create a password"))
                     .textContentType(.newPassword)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -209,34 +178,11 @@ struct CreateAccountView: View {
     }
 
     private var continueButton: some View {
-        Button(action: submit) {
-            ZStack {
-                if isSubmitting {
-                    ProgressView()
-                        .progressViewStyle(.circular)
-                        .tint(canSubmit ? Theme.Palette.cream : disabledStroke)
-                } else {
-                    Text("Continue")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(canSubmit ? Theme.Palette.cream : disabledStroke)
-                }
-            }
-            .frame(width: 230, height: 54)
-            .background(
-                RoundedRectangle(cornerRadius: 25, style: .continuous)
-                    .fill(canSubmit ? Theme.Palette.darkBrown : disabledFill)
-            )
-            .overlay(
-                Group {
-                    if !canSubmit {
-                        RoundedRectangle(cornerRadius: 25, style: .continuous)
-                            .stroke(disabledStroke, lineWidth: 1)
-                    }
-                }
-            )
-        }
-        .buttonStyle(.plain)
-        .disabled(!canSubmit)
+        PrimaryActionButton(
+            isEnabled: canSubmit,
+            isLoading: isSubmitting,
+            action: submit
+        )
     }
 
     private func submit() {

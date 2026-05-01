@@ -11,76 +11,116 @@ struct FindFriendsView: View {
     @State private var loadError: String?
     @State private var searchTask: Task<Void, Never>?
 
+    private let searchFill = Color(hex: "EFEFEF")
+    private let placeholderGray = Color(hex: "888888")
+
     var body: some View {
         VStack(spacing: 0) {
-            heading
-                .padding(.horizontal, 24)
-                .padding(.top, 28)
-                .padding(.bottom, 18)
+            StepProgressBar(currentStep: 3)
+                .padding(.top, 30)
 
-            SearchBar(text: $query, placeholder: "Search by username or name")
-                .padding(.horizontal, 24)
-                .padding(.bottom, 14)
+            content
+                .padding(.top, 32)
 
-            list
+            Spacer(minLength: 16)
 
-            footer
+            PrimaryActionButton(action: onFinish)
+                .padding(.bottom, 40)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.Palette.background)
-        .navigationBarBackButtonHidden(true)
         .onChange(of: query) { _, newValue in
             scheduleSearch(for: newValue)
         }
         .task { await runSearch(query: "") }
     }
 
-    private var heading: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Add your friends")
-                .font(.system(size: 28, weight: .semibold))
-                .tracking(0.28)
-                .foregroundColor(Theme.Palette.darkBrown)
-            Text("See what your friends are cooking. You can always add more later.")
-                .font(.system(size: 15, weight: .regular))
-                .foregroundColor(Theme.Palette.lightBrown)
-                .fixedSize(horizontal: false, vertical: true)
+    private var content: some View {
+        VStack(spacing: 25) {
+            heading
+            searchField
+            list
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(width: 320)
+        .frame(maxWidth: .infinity)
+    }
+
+    private var heading: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "person.2.fill")
+                .font(.system(size: 36, weight: .regular))
+                .foregroundColor(Theme.Palette.darkBrown)
+                .frame(height: 43)
+
+            Text("Add your friends.")
+                .font(.system(size: 30, weight: .medium))
+                .tracking(0.3)
+                .foregroundColor(Theme.Palette.darkBrown)
+                .multilineTextAlignment(.center)
+                .frame(width: 257)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 14, weight: .regular))
+                .foregroundColor(placeholderGray)
+
+            TextField(
+                "",
+                text: $query,
+                prompt: Text("Begin typing usernames...")
+                    .font(.system(size: 15, weight: .light))
+                    .foregroundColor(placeholderGray)
+            )
+            .font(.system(size: 15, weight: .regular))
+            .foregroundColor(Theme.Palette.darkBrown)
+            .tint(Theme.Palette.lightBrown)
+            .textFieldStyle(.plain)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+        }
+        .padding(.leading, 20)
+        .padding(.trailing, 10)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(searchFill)
+        )
     }
 
     @ViewBuilder
     private var list: some View {
         if isLoading && results.isEmpty {
-            VStack {
-                Spacer()
-                ProgressView().tint(Theme.Palette.lightBrown)
-                Spacer()
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            ProgressView()
+                .tint(Theme.Palette.lightBrown)
+                .frame(maxWidth: .infinity, minHeight: 120)
         } else if let loadError, results.isEmpty {
             stateMessage(title: "Couldn't load people", body: loadError)
         } else if results.isEmpty {
             stateMessage(
                 title: query.isEmpty ? "Search for friends" : "No matches",
                 body: query.isEmpty
-                    ? "Type a username or name to find people on InMyBeli."
+                    ? "Type a username or name to find people."
                     : "Try a different name or username."
             )
         } else {
             ScrollView {
-                LazyVStack(spacing: 8) {
+                WrappedHStack(spacing: 15, runSpacing: 35) {
                     ForEach(results) { candidate in
-                        FriendRow(
+                        FriendCard(
                             candidate: candidate,
                             requested: requestedIds.contains(candidate.id),
                             onAdd: { add(candidate) }
                         )
                     }
                 }
-                .padding(.horizontal, 24)
                 .padding(.vertical, 6)
             }
             .scrollIndicators(.hidden)
+            .frame(maxHeight: 360)
         }
     }
 
@@ -95,32 +135,7 @@ struct FindFriendsView: View {
                 .multilineTextAlignment(.center)
         }
         .padding(.horizontal, 36)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var footer: some View {
-        VStack(spacing: 10) {
-            Button(action: onFinish) {
-                Text(requestedIds.isEmpty ? "Skip for now" : "Done (\(requestedIds.count))")
-                    .font(.system(size: 16, weight: .semibold))
-                    .tracking(0.16)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 52)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Theme.Palette.lightBrown)
-                    )
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 24)
-        .padding(.top, 12)
-        .padding(.bottom, 28)
-        .background(
-            Theme.Palette.background
-                .shadow(color: Theme.Palette.darkBrown.opacity(0.04), radius: 8, x: 0, y: -2)
-        )
+        .frame(maxWidth: .infinity, minHeight: 160)
     }
 
     private func scheduleSearch(for value: String) {
@@ -160,77 +175,74 @@ struct FindFriendsView: View {
     }
 }
 
-private struct FriendRow: View {
+private struct FriendCard: View {
     let candidate: FriendCandidate
     let requested: Bool
     let onAdd: () -> Void
 
-    var body: some View {
-        HStack(spacing: 12) {
-            avatar
+    private let avatarFill = Color(hex: "F6F6F6")
+    private let avatarStroke = Color(hex: "BEBEBE")
+    private let cream = Color(hex: "FAF6EE")
 
-            VStack(alignment: .leading, spacing: 2) {
+    var body: some View {
+        VStack(spacing: 10) {
+            VStack(spacing: 2) {
+                avatar
+
                 Text(candidate.name ?? candidate.username)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 15, weight: .medium))
+                    .tracking(0.15)
                     .foregroundColor(Theme.Palette.darkBrown)
                     .lineLimit(1)
+
                 Text("@\(candidate.username)")
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundColor(Theme.Palette.lightBrown)
+                    .font(.system(size: 13, weight: .light))
+                    .foregroundColor(Color(hex: "888888"))
                     .lineLimit(1)
             }
 
-            Spacer()
-
-            Button(action: onAdd) {
+            Button(action: { if !requested { onAdd() } }) {
                 Text(requested ? "Added" : "Add")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(requested ? Theme.Palette.lightBrown : .white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+                    .font(.system(size: 15, weight: requested ? .medium : .light))
+                    .foregroundColor(requested ? cream : Theme.Palette.lightBrown)
+                    .frame(width: requested ? 83 : 79)
+                    .padding(.vertical, 5)
                     .background(
-                        Capsule()
-                            .fill(requested ? Theme.Palette.cream : Theme.Palette.lightBrown)
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(requested ? Theme.Palette.lightBrown : cream)
                     )
                     .overlay(
-                        Capsule()
-                            .stroke(Theme.Palette.lightBrown, lineWidth: requested ? 1 : 0)
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(Theme.Palette.lightBrown, lineWidth: 1)
                     )
             }
             .buttonStyle(.plain)
             .disabled(requested)
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.white)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Theme.Palette.darkBrown.opacity(0.08), lineWidth: 1)
-        )
+        .frame(width: 90)
     }
 
     private var avatar: some View {
         let initial = (candidate.name?.first ?? candidate.username.first).map { String($0).uppercased() } ?? "?"
         return ZStack {
             Circle()
-                .fill(Theme.Palette.cream)
+                .fill(avatarFill)
             Text(initial)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 24, weight: .semibold))
                 .foregroundColor(Theme.Palette.lightBrown)
         }
-        .frame(width: 40, height: 40)
+        .frame(width: 70, height: 70)
         .overlay(
-            Circle().stroke(Theme.Palette.lightBrown.opacity(0.2), lineWidth: 1)
+            Circle().stroke(avatarStroke, lineWidth: 1.5)
         )
     }
 }
 
 #Preview {
-    FindFriendsView(
-        currentUser: AppUser(id: 1, name: "Ronald", username: "ronald", createdAt: nil),
-        onFinish: {}
-    )
+    NavigationStack {
+        FindFriendsView(
+            currentUser: AppUser(id: 1, name: "Ronald", username: "ronald", createdAt: nil),
+            onFinish: {}
+        )
+    }
 }

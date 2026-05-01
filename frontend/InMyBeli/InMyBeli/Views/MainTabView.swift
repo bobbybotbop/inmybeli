@@ -26,7 +26,7 @@ struct MainTabView: View {
         case .create:
             placeholder("Create")
         case .cookbooks:
-            placeholder("Cookbooks")
+            CookbooksView()
         case .profile:
             placeholder("Profile")
         }
@@ -45,67 +45,49 @@ struct TabBar: View {
     @Binding var selectedTab: Tab
 
     var body: some View {
-        HStack(spacing: 18) {
+        HStack(spacing: 25) {
             TabBarItem(
                 icon: "magnifyingglass",
-                label: "Discover",
                 isSelected: selectedTab == .discover
             ) { selectedTab = .discover }
 
             TabBarItem(
                 icon: "square.and.pencil",
-                label: "Create",
                 isSelected: selectedTab == .create
             ) { selectedTab = .create }
 
             TabBarItem(
-                icon: "book",
-                label: "Cookbooks",
+                icon: "book.closed",
                 isSelected: selectedTab == .cookbooks
             ) { selectedTab = .cookbooks }
 
             TabBarItem(
                 icon: "person.crop.circle",
-                label: "Profile",
                 isSelected: selectedTab == .profile
             ) { selectedTab = .profile }
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 14)
-        .padding(.bottom, 22)
+        .padding(.top, 20)
+        .padding(.bottom, 24)
         .frame(maxWidth: .infinity)
         .background(Theme.Palette.tabBar)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(Theme.Palette.lightBrown.opacity(0.12))
-                .frame(height: 1)
-        }
     }
 }
 
 struct TabBarItem: View {
     let icon: String
-    let label: String
     let isSelected: Bool
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 3) {
-                Image(systemName: icon)
-                    .font(.system(size: 20, weight: isSelected ? .semibold : .regular))
-                    .frame(height: 24)
-                Text(label)
-                    .font(.system(size: 10, weight: isSelected ? .semibold : .regular))
-                    .tracking(0.1)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 52)
-            .foregroundColor(isSelected ? Theme.Palette.cream : Theme.Palette.darkBrown)
-            .background(
-                RoundedRectangle(cornerRadius: Theme.Radius.tabItem)
-                    .fill(isSelected ? Theme.Palette.lightBrown : .clear)
-            )
+            Image(systemName: icon)
+                .font(.system(size: 22, weight: isSelected ? .semibold : .regular))
+                .foregroundColor(isSelected ? Theme.Palette.cream : Theme.Palette.darkBrown)
+                .frame(width: 50, height: 50)
+                .background(
+                    Circle()
+                        .fill(isSelected ? Theme.Palette.lightBrown : .clear)
+                )
         }
         .buttonStyle(.plain)
     }
