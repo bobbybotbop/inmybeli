@@ -968,7 +968,7 @@ All recipe endpoints require authentication (`Authorization: Bearer <token>`).
 **Route:** `GET /api/feed/recipes/`  
 **Method:** `GET`  
 **Authentication:** Required  
-**Description:** All recipes for discover: ordered by calendar day (newest days first); within each day, friends’ recipes first. Each preview may include `total_saves_count` (distinct users who saved the recipe via a per-user cookbook named `"saved"`).
+**Description:** All recipes for discover: ordered by calendar day (newest days first); within each day, friends’ recipes first. Each preview may include `total_saves_count` (distinct users who saved the recipe via a per-user cookbook named `"saved"`) and `friend_saved_profile_picture_urls` — up to two profile picture URLs of the current user’s accepted friends who saved the recipe via their `"saved"` cookbook, ordered by friend user id ascending. The list is empty when no friend has saved the recipe.
 
 **Example Request:** `GET /api/feed/recipes/`
 
@@ -984,7 +984,11 @@ All recipe endpoints require authentication (`Authorization: Bearer <token>`).
       "image_url": "https://your-bucket.s3.amazonaws.com/recipe/uuid.jpg",
       "time_minutes": 20,
       "cuisine": "Italian",
-      "total_saves_count": 5
+      "total_saves_count": 5,
+      "friend_saved_profile_picture_urls": [
+        "https://your-bucket.s3.amazonaws.com/profile/friend-a.jpg",
+        "https://your-bucket.s3.amazonaws.com/profile/friend-b.jpg"
+      ]
     }
   ]
 }

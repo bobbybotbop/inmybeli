@@ -12,6 +12,7 @@ from backend.routes.dependencies import (
     Cookbook,
     Recipe,
     Review,
+    User,
     error,
     success,
     require_auth,
@@ -51,6 +52,40 @@ def _total_saves_by_recipe_id():
         .all()
     )
     return {recipe_id: int(cnt) for recipe_id, cnt in rows}
+
+
+def _friend_saved_profile_urls_by_recipe(recipe_ids, friend_ids, limit=2):
+    """
+    For each recipe id, return up to `limit` profile picture URLs of accepted
+    friends who saved the recipe via their global 'saved' cookbook. Savers are
+    ordered by User.id ascending for deterministic results.
+    """
+    if not recipe_ids or not friend_ids:
+        return {}
+
+    rows = (
+        db.session.query(
+            cookbookRecipes.c.recipe_id,
+            User.id,
+            User.profile_picture_url,
+        )
+        .join(Cookbook, Cookbook.id == cookbookRecipes.c.cookbook_id)
+        .join(User, User.id == Cookbook.creator_id)
+        .filter(
+            Cookbook.name == "saved",
+            Cookbook.creator_id.in_(friend_ids),
+            cookbookRecipes.c.recipe_id.in_(recipe_ids),
+        )
+        .order_by(cookbookRecipes.c.recipe_id.asc(), User.id.asc())
+        .all()
+    )
+
+    urls_by_recipe = defaultdict(list)
+    for recipe_id, _user_id, profile_url in rows:
+        bucket = urls_by_recipe[recipe_id]
+        if len(bucket) < limit:
+            bucket.append(profile_url)
+    return urls_by_recipe
 
 
 def _recipes_feed_ordered(recipes, friend_ids):
@@ -252,15 +287,19 @@ def get_recipes_by_user(user_id):
 def get_recipe_feed():
     """
     All recipes for Discover: reverse chronological by day; friends prioritized within each day.
-    Preview includes total_saves_count from each user's global 'saved' cookbook.
+    Preview includes total_saves_count from each user's global 'saved' cookbook and
+    up to two profile picture URLs of accepted friends who also saved the recipe.
     """
     saves_counts = _total_saves_by_recipe_id()
     recipes = Recipe.query.order_by(Recipe.created_at.desc()).all()
     friend_ids = {u.id for u in g.user.get_friends()}
     ordered = _recipes_feed_ordered(recipes, friend_ids)
+    recipe_ids = [r.id for r in ordered]
+    friend_saver_urls = _friend_saved_profile_urls_by_recipe(recipe_ids, friend_ids)
     payload = [
         r.serialize_preview(
             total_saves_count=saves_counts.get(r.id, 0),
+            friend_saved_profile_picture_urls=friend_saver_urls.get(r.id, []),
         )
         for r in ordered
     ]

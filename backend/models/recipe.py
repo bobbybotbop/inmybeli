@@ -61,7 +61,7 @@ class Recipe(db.Model):
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 
-    def serialize_preview(self, *, total_saves_count=None):
+    def serialize_preview(self, *, total_saves_count=None, friend_saved_profile_picture_urls=None):
         """Recipe preview for feed/discover cards"""
         data = {
             "id": self.id,
@@ -73,4 +73,6 @@ class Recipe(db.Model):
         }
         if total_saves_count is not None:
             data["total_saves_count"] = total_saves_count
+        if friend_saved_profile_picture_urls is not None:
+            data["friend_saved_profile_picture_urls"] = friend_saved_profile_picture_urls
         return data
