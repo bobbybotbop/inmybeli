@@ -33,6 +33,7 @@ Authorization: Bearer <session_token>
 **Description:** Create a new user account with optional profile picture upload
 
 **Request Body:**
+
 - Content-Type: `multipart/form-data`
 - Fields:
   - `name` (string, required, 1-255 chars) - User's full name
@@ -206,39 +207,6 @@ curl -X GET http://localhost:5000/api/users \
 
 ---
 
-### 5. Get All Tokens
-
-**HTTP Method:** `GET`  
-**Route:** `/users/tokens`  
-**Authentication:** None (Public)  
-**Description:** Get all active session tokens (for debugging/admin purposes)
-
-**Request Body:** None
-
-**Example Request:**
-
-```bash
-curl -X GET http://localhost:5000/api/users/tokens
-```
-
-**Example Response (200 OK):**
-
-```json
-{
-  "tokens": [
-    {
-      "id": 1,
-      "token": "abc123def456ghi789...",
-      "user_id": 1,
-      "created_at": "2026-04-30T10:30:00+00:00",
-      "expires_at": "2026-05-30T10:30:00+00:00"
-    }
-  ]
-}
-```
-
----
-
 ## Recipes Endpoints
 
 ### 1. Create Recipe
@@ -249,6 +217,7 @@ curl -X GET http://localhost:5000/api/users/tokens
 **Description:** Create a new recipe with optional image upload. Current user becomes the recipe owner.
 
 **Request Body:**
+
 - Content-Type: `multipart/form-data`
 - Fields:
   - `title` (string, required, 1-255 chars) - Recipe title
@@ -288,8 +257,8 @@ curl -X POST http://localhost:5000/api/recipes \
   "cuisine": "Italian",
   "servings": 4,
   "ingredients": [
-    {"name": "spaghetti", "amount": "400g"},
-    {"name": "eggs", "amount": "3"}
+    { "name": "spaghetti", "amount": "400g" },
+    { "name": "eggs", "amount": "3" }
   ],
   "instructions": ["Boil water", "Cook pasta", "Mix eggs"],
   "created_at": "2026-04-30T10:30:00+00:00",
@@ -334,8 +303,8 @@ curl -X GET http://localhost:5000/api/recipes/5 \
   "cuisine": "Italian",
   "servings": 4,
   "ingredients": [
-    {"name": "spaghetti", "amount": "400g"},
-    {"name": "eggs", "amount": "3"}
+    { "name": "spaghetti", "amount": "400g" },
+    { "name": "eggs", "amount": "3" }
   ],
   "instructions": ["Boil water", "Cook pasta", "Mix eggs"],
   "created_at": "2026-04-30T10:30:00+00:00",
@@ -358,6 +327,7 @@ curl -X GET http://localhost:5000/api/recipes/5 \
 **Description:** Update an existing recipe. Only the recipe creator can update it. All fields are optional.
 
 **Request Body:**
+
 - Content-Type: `multipart/form-data`
 - Fields (all optional):
   - `title` (string, 1-255 chars)
@@ -390,7 +360,10 @@ curl -X POST http://localhost:5000/api/recipes/5 \
   "time_minutes": 35,
   "cuisine": "Italian",
   "servings": 6,
-  "ingredients": [{"name": "spaghetti", "amount": "400g"}, {"name": "eggs", "amount": "3"}],
+  "ingredients": [
+    { "name": "spaghetti", "amount": "400g" },
+    { "name": "eggs", "amount": "3" }
+  ],
   "instructions": ["Boil water", "Cook pasta", "Mix eggs"],
   "created_at": "2026-04-30T10:30:00+00:00",
   "updated_at": "2026-04-30T11:45:00+00:00"
