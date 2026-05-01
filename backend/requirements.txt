@@ -2,3 +2,5 @@ flask
 sqlalchemy
 flask-sqlalchemy
 marshmallow
+boto3
+dotenv

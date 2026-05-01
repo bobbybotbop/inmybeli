@@ -151,10 +151,7 @@ struct FindFriendsView: View {
         requestedIds.insert(candidate.id)
         Task {
             do {
-                try await FriendService.shared.sendFriendRequest(
-                    currentUserId: currentUser.id,
-                    friendId: candidate.id
-                )
+                try await FriendService.shared.sendFriendRequest(friendId: candidate.id)
             } catch {
                 requestedIds.remove(candidate.id)
                 loadError = error.localizedDescription

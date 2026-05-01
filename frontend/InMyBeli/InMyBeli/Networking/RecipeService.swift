@@ -10,6 +10,10 @@ private struct UserRecipesResponse: Decodable {
     }
 }
 
+private struct FeedResponse: Decodable {
+    let recipes: [RecipePreview]
+}
+
 final class RecipeService {
     static let shared = RecipeService()
 
@@ -17,6 +21,11 @@ final class RecipeService {
 
     init(client: APIClient = .shared) {
         self.client = client
+    }
+
+    func fetchFeed() async throws -> [RecipePreview] {
+        let response = try await client.get("feed/recipes/", as: FeedResponse.self)
+        return response.recipes
     }
 
     func fetchRecipes(forUserId userId: Int) async throws -> [RecipePreview] {

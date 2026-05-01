@@ -44,12 +44,14 @@ struct RecipePreview: Codable, Identifiable, Hashable {
     let imageUrl: String?
     let timeMinutes: Int?
     let cuisine: String?
+    let totalSavesCount: Int?
 
     enum CodingKeys: String, CodingKey {
         case id, title, cuisine
         case creatorId = "creator_id"
         case imageUrl = "image_url"
         case timeMinutes = "time_minutes"
+        case totalSavesCount = "total_saves_count"
     }
 
     var timeLabel: String? {

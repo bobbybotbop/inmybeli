@@ -6,8 +6,6 @@ struct DiscoverView: View {
     @State private var isLoading = false
     @State private var loadError: String?
 
-    var feedUserId: Int = 1
-
     private var filteredRecipes: [RecipePreview] {
         guard !searchText.isEmpty else { return recipes }
         let needle = searchText.lowercased()
@@ -86,7 +84,7 @@ struct DiscoverView: View {
         loadError = nil
         defer { isLoading = false }
         do {
-            recipes = try await RecipeService.shared.fetchRecipes(forUserId: feedUserId)
+            recipes = try await RecipeService.shared.fetchFeed()
         } catch {
             loadError = error.localizedDescription
         }
