@@ -7,7 +7,6 @@ struct CreateAccountView: View {
     @State private var username: String = ""
     @State private var password: String = ""
     @State private var confirmPassword: String = ""
-    @State private var showPassword: Bool = false
     @State private var isSubmitting = false
     @State private var errorMessage: String?
 
@@ -16,6 +15,13 @@ struct CreateAccountView: View {
     private enum Field {
         case name, username, password, confirm
     }
+
+    // One-off Figma colors not promoted to Theme.
+    private let fieldFill = Color(hex: "EFEFEF")
+    private let placeholderGray = Color(hex: "888888")
+    private let photoPlaceholder = Color(hex: "D9D9D9")
+    private let disabledFill = Color(hex: "F6F6F6")
+    private let disabledStroke = Color(hex: "A4A4A4")
 
     private var trimmedName: String { name.trimmingCharacters(in: .whitespaces) }
     private var trimmedUsername: String { username.trimmingCharacters(in: .whitespaces) }
@@ -38,163 +44,195 @@ struct CreateAccountView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 28) {
-                heading
-
-                VStack(spacing: 14) {
-                    field(label: "Name", systemImage: "person") {
-                        TextField("Your full name", text: $name)
-                            .textContentType(.name)
-                            .focused($focusedField, equals: .name)
-                            .submitLabel(.next)
-                            .onSubmit { focusedField = .username }
-                    }
-
-                    field(label: "Username", systemImage: "at") {
-                        TextField("at least 3 characters", text: $username)
-                            .textContentType(.username)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .focused($focusedField, equals: .username)
-                            .submitLabel(.next)
-                            .onSubmit { focusedField = .password }
-                    }
-
-                    field(label: "Password", systemImage: "lock") {
-                        passwordField($password, placeholder: "at least 8 characters", focus: .password) {
-                            focusedField = .confirm
-                        }
-                    }
-
-                    field(label: "Confirm Password", systemImage: "lock.rotation") {
-                        passwordField($confirmPassword, placeholder: "re-enter password", focus: .confirm) {
-                            submit()
-                        }
-                    }
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(spacing: 10) {
+                    stepLabel
+                    progressBar
                 }
+                .frame(width: 320)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 30)
 
-                if let message = errorMessage ?? validationError, !message.isEmpty {
-                    Text(message)
-                        .font(.system(size: 13, weight: .regular))
-                        .foregroundColor(Theme.Palette.orangeBrown)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(spacing: 75) {
+                    VStack(spacing: 60) {
+                        photoBlock
+                        inputsBlock
+                    }
+                    .frame(width: 329)
+
+                    continueSection
                 }
-
-                primaryButton
+                .frame(maxWidth: .infinity)
+                .padding(.top, 50)
+                .padding(.bottom, 40)
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 28)
-            .padding(.bottom, 40)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .scrollIndicators(.hidden)
         .scrollDismissesKeyboard(.interactively)
         .background(Theme.Palette.background)
-        .navigationBarBackButtonHidden(true)
     }
 
-    private var heading: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Create your account")
-                .font(.system(size: 28, weight: .semibold))
-                .tracking(0.28)
-                .foregroundColor(Theme.Palette.darkBrown)
-            Text("A few quick details to get cooking.")
-                .font(.system(size: 15, weight: .regular))
-                .foregroundColor(Theme.Palette.lightBrown)
+    // MARK: - Progress
+
+    private var stepLabel: some View {
+        (Text("Step 1").font(.system(size: 15, weight: .bold))
+         + Text(" of 3").font(.system(size: 15, weight: .light)))
+            .tracking(0.15)
+            .foregroundColor(.black)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var progressBar: some View {
+        HStack(spacing: 5) {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Theme.Palette.lightBrown)
+                .frame(width: 100, height: 12)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(fieldFill)
+                .frame(width: 110, height: 12)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(fieldFill)
+                .frame(width: 100, height: 12)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(width: 320, height: 12)
     }
 
-    private func field<Content: View>(
+    // MARK: - Photo
+
+    private var photoBlock: some View {
+        VStack(spacing: 20) {
+            Button {
+                // Profile picture upload not wired up in this UX pass.
+            } label: {
+                Circle()
+                    .fill(photoPlaceholder)
+                    .frame(width: 115, height: 115)
+            }
+            .buttonStyle(.plain)
+
+            Text("Add Photo")
+                .font(.system(size: 20, weight: .regular))
+                .foregroundColor(.black)
+        }
+    }
+
+    // MARK: - Inputs
+
+    private var inputsBlock: some View {
+        VStack(spacing: 30) {
+            inputField(label: "Your Name") {
+                TextField("", text: $name, prompt: placeholder("First Name, Last Name"))
+                    .textContentType(.name)
+                    .focused($focusedField, equals: .name)
+                    .submitLabel(.next)
+                    .onSubmit { focusedField = .username }
+            }
+
+            inputField(label: "Username") {
+                TextField("", text: $username, prompt: placeholder("Begin typing..."))
+                    .textContentType(.username)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .focused($focusedField, equals: .username)
+                    .submitLabel(.next)
+                    .onSubmit { focusedField = .password }
+            }
+
+            inputField(label: "Password") {
+                SecureField("", text: $password, prompt: placeholder("Begin typing..."))
+                    .textContentType(.newPassword)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .focused($focusedField, equals: .password)
+                    .submitLabel(.next)
+                    .onSubmit { focusedField = .confirm }
+            }
+
+            inputField(label: "Confirm Password") {
+                SecureField("", text: $confirmPassword, prompt: placeholder("Re-enter password"))
+                    .textContentType(.newPassword)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .focused($focusedField, equals: .confirm)
+                    .submitLabel(.done)
+                    .onSubmit { submit() }
+            }
+        }
+    }
+
+    private func placeholder(_ text: String) -> Text {
+        Text(text)
+            .font(.system(size: 15, weight: .light))
+            .foregroundColor(placeholderGray)
+    }
+
+    private func inputField<Content: View>(
         label: String,
-        systemImage: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label)
-                .font(.system(size: 13, weight: .medium))
-                .tracking(0.13)
-                .foregroundColor(Theme.Palette.darkBrown.opacity(0.7))
+                .font(.system(size: 15, weight: .regular))
+                .foregroundColor(.black)
+                .padding(.leading, 10)
 
-            HStack(spacing: 10) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 15, weight: .regular))
-                    .foregroundColor(Theme.Palette.lightBrown)
-                    .frame(width: 18)
-
-                content()
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundColor(Theme.Palette.darkBrown)
-                    .tint(Theme.Palette.lightBrown)
-                    .textFieldStyle(.plain)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 13)
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.white)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Theme.Palette.darkBrown.opacity(0.10), lineWidth: 1)
-            )
+            content()
+                .font(.system(size: 15, weight: .regular))
+                .foregroundColor(.black)
+                .tint(Theme.Palette.lightBrown)
+                .textFieldStyle(.plain)
+                .padding(.leading, 20)
+                .padding(.trailing, 10)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(fieldFill)
+                )
         }
     }
 
-    @ViewBuilder
-    private func passwordField(
-        _ binding: Binding<String>,
-        placeholder: String,
-        focus: Field,
-        onSubmit: @escaping () -> Void
-    ) -> some View {
-        HStack(spacing: 8) {
-            Group {
-                if showPassword {
-                    TextField(placeholder, text: binding)
-                } else {
-                    SecureField(placeholder, text: binding)
-                }
-            }
-            .textContentType(focus == .password ? .newPassword : .newPassword)
-            .textInputAutocapitalization(.never)
-            .autocorrectionDisabled()
-            .focused($focusedField, equals: focus)
-            .submitLabel(focus == .password ? .next : .done)
-            .onSubmit(onSubmit)
+    // MARK: - Continue
 
-            if focus == .password {
-                Button {
-                    showPassword.toggle()
-                } label: {
-                    Image(systemName: showPassword ? "eye.slash" : "eye")
-                        .font(.system(size: 14))
-                        .foregroundColor(Theme.Palette.lightBrown.opacity(0.7))
-                }
-                .buttonStyle(.plain)
+    private var continueSection: some View {
+        VStack(spacing: 12) {
+            if let message = errorMessage ?? validationError, !message.isEmpty {
+                Text(message)
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundColor(Theme.Palette.orangeBrown)
+                    .frame(width: 329, alignment: .leading)
             }
+
+            continueButton
         }
     }
 
-    private var primaryButton: some View {
+    private var continueButton: some View {
         Button(action: submit) {
             ZStack {
                 if isSubmitting {
                     ProgressView()
                         .progressViewStyle(.circular)
-                        .tint(.white)
+                        .tint(canSubmit ? Theme.Palette.cream : disabledStroke)
                 } else {
                     Text("Continue")
-                        .font(.system(size: 16, weight: .semibold))
-                        .tracking(0.16)
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(canSubmit ? Theme.Palette.cream : disabledStroke)
                 }
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 52)
-            .foregroundColor(.white)
+            .frame(width: 230, height: 54)
             .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(canSubmit ? Theme.Palette.lightBrown : Theme.Palette.lightBrown.opacity(0.4))
+                RoundedRectangle(cornerRadius: 25, style: .continuous)
+                    .fill(canSubmit ? Theme.Palette.darkBrown : disabledFill)
+            )
+            .overlay(
+                Group {
+                    if !canSubmit {
+                        RoundedRectangle(cornerRadius: 25, style: .continuous)
+                            .stroke(disabledStroke, lineWidth: 1)
+                    }
+                }
             )
         }
         .buttonStyle(.plain)

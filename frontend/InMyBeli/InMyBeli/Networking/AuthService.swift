@@ -34,4 +34,20 @@ final class AuthService {
         APIClient.shared.sessionToken = response.sessionToken
         return AuthSession(user: response.user, token: response.sessionToken)
     }
+
+    @discardableResult
+    func login(username: String, password: String) async throws -> AuthSession {
+        struct Body: Encodable { let username: String; let password: String }
+        struct Response: Decodable {
+            let user: AppUser
+            let token: String
+        }
+        let response = try await client.post(
+            "users/login/",
+            body: Body(username: username, password: password),
+            as: Response.self
+        )
+        APIClient.shared.sessionToken = response.token
+        return AuthSession(user: response.user, token: response.token)
+    }
 }
