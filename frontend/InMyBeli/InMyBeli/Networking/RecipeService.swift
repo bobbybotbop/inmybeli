@@ -14,6 +14,16 @@ private struct FeedResponse: Decodable {
     let recipes: [RecipePreview]
 }
 
+private struct ReviewsResponse: Decodable {
+    let recipeId: Int
+    let reviews: [Review]
+
+    enum CodingKeys: String, CodingKey {
+        case reviews
+        case recipeId = "recipe_id"
+    }
+}
+
 final class RecipeService {
     static let shared = RecipeService()
 
@@ -71,6 +81,23 @@ final class RecipeService {
             fields: fields,
             imageData: imageData,
             as: Recipe.self
+        )
+    }
+
+    func fetchReviews(recipeId: Int) async throws -> [Review] {
+        let response = try await client.get(
+            "recipes/\(recipeId)/reviews/",
+            as: ReviewsResponse.self
+        )
+        return response.reviews
+    }
+
+    func submitReview(recipeId: Int, rating: Int, text: String?) async throws -> Review {
+        struct Body: Encodable { let rating: Int; let text: String? }
+        return try await client.post(
+            "recipes/\(recipeId)/reviews/",
+            body: Body(rating: rating, text: text),
+            as: Review.self
         )
     }
 }

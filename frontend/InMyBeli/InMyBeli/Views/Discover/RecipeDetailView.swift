@@ -13,6 +13,8 @@ struct RecipeDetailView: View {
     @State private var recipe: Recipe?
     @State private var loadError: String?
     @State private var isLoading = false
+    @State private var isWriteReviewPresented = false
+    @State private var isSaveSheetPresented = false
 
     init(recipeId: Int, initialTitle: String? = nil) {
         self.recipeId = recipeId
@@ -55,6 +57,16 @@ struct RecipeDetailView: View {
             }
         }
         .task { await loadRecipe() }
+        .sheet(isPresented: $isWriteReviewPresented) {
+            WriteReviewView(recipeId: recipeId)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.hidden)
+        }
+        .sheet(isPresented: $isSaveSheetPresented) {
+            SaveToCookbookSheet(recipeId: recipeId, onSaved: {})
+                .presentationDetents([.height(469), .large])
+                .presentationDragIndicator(.hidden)
+        }
     }
 
     private func loadRecipe() async {
@@ -134,9 +146,24 @@ struct RecipeDetailView: View {
 
     private var actionButtons: some View {
         HStack(spacing: 50) {
-            ActionIconButton(icon: "bookmark", label: "Save", bordered: false)
-            ActionIconButton(icon: "square.and.pencil", label: "Rate", bordered: false)
-            ActionIconButton(icon: "person.2", label: "Reviews", bordered: true)
+            Button {
+                isSaveSheetPresented = true
+            } label: {
+                ActionIconButton(icon: "bookmark", label: "Save", bordered: false)
+            }
+            .buttonStyle(.plain)
+            Button {
+                isWriteReviewPresented = true
+            } label: {
+                ActionIconButton(icon: "square.and.pencil", label: "Rate", bordered: false)
+            }
+            .buttonStyle(.plain)
+            NavigationLink {
+                ReviewsListView(recipeId: recipeId, recipeTitle: displayTitle)
+            } label: {
+                ActionIconButton(icon: "person.2", label: "Reviews", bordered: true)
+            }
+            .buttonStyle(.plain)
         }
     }
 

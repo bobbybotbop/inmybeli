@@ -43,4 +43,15 @@ final class CookbookService {
         )
         return response.cookbook
     }
+
+    @discardableResult
+    func addRecipe(cookbookId: Int, recipeId: Int) async throws -> CookbookDetail {
+        struct Body: Encodable { let recipe_id: Int }
+        let response = try await client.post(
+            "cookbooks/\(cookbookId)/recipes/",
+            body: Body(recipe_id: recipeId),
+            as: CreateCookbookResponse.self
+        )
+        return response.cookbook
+    }
 }
