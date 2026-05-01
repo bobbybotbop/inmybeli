@@ -28,7 +28,7 @@ struct MainTabView: View {
         case .cookbooks:
             placeholder("Cookbooks")
         case .profile:
-            placeholder("Profile")
+            ProfileView()
         }
     }
 
