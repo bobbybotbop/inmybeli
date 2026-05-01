@@ -2,20 +2,9 @@
 
 ## Base URL
 
-Default local server:
-
 ```
-http://127.0.0.1:5001
+http://localhost:5001/api
 ```
-
-Blueprints are mounted as follows (full paths below each endpoint):
-
-| Area     | Prefix            |
-|----------|-------------------|
-| Users    | `/api/users`      |
-| Friends  | `/api/friends`    |
-| Cookbooks| `/api/cookbooks`  |
-| Recipes  | `/api`            |
 
 ## Authentication
 
@@ -25,12 +14,12 @@ Most endpoints require Bearer token authentication. Include the token in the Aut
 Authorization: Bearer <session_token>
 ```
 
-Public endpoints (no auth required):
+### Public Endpoints (No Authentication Required)
 
-- `POST /api/users/create` or `POST /api/users/create/`
-- `POST /api/users/login/`
-- `POST /api/users/autologin/`
-- `GET /api/users/tokens`
+- `POST /users/create`
+- `POST /users/login`
+- `POST /users/autologin`
+- `GET /users/tokens`
 
 ---
 
@@ -38,21 +27,29 @@ Public endpoints (no auth required):
 
 ### 1. Create Account
 
-**Route:** `POST /api/users/create` or `POST /api/users/create/`  
-**Method:** `POST`  
+**HTTP Method:** `POST`  
+**Route:** `/users/create`  
 **Authentication:** None (Public)  
-**Description:** Create a new user account (multipart form-data; optional profile picture upload to S3)
+**Description:** Create a new user account with optional profile picture upload
 
-**Request:** `multipart/form-data`
+**Request Body:**
 
-| Field             | Type   | Required |
-|-------------------|--------|----------|
-| `name`            | text   | Yes      |
-| `username`        | text   | Yes      |
-| `password`        | text   | Yes (min 8 chars) |
-| `profile_picture` | file   | No       |
+- Content-Type: `multipart/form-data`
+- Fields:
+  - `name` (string, required, 1-255 chars) - User's full name
+  - `username` (string, required, 3-50 chars, unique) - User's username
+  - `password` (string, required, minimum 8 chars) - User's password
+  - `profile_picture` (file, optional) - User's profile image
 
-**Example (Postman / curl):** form fields `name`, `username`, `password`, optional file key `profile_picture`.
+**Example Request:**
+
+```bash
+curl -X POST http://localhost:5000/api/users/create \
+  -F "name=John Doe" \
+  -F "username=johndoe" \
+  -F "password=securepass123" \
+  -F "profile_picture=@/path/to/image.jpg"
+```
 
 **Example Response (201 Created):**
 
@@ -62,27 +59,27 @@ Public endpoints (no auth required):
     "id": 1,
     "name": "John Doe",
     "username": "johndoe",
-    "profile_url": "https://appdev-inmybeli.s3.us-east-2.amazonaws.com/assets/blankpfp.png",
-    "created_at": "2026-04-29T10:30:00+00:00"
+    "profile_url": "https://s3.amazonaws.com/inmybeli/pfp/default.jpg",
+    "created_at": "2026-04-30T10:30:00+00:00"
   },
-  "session_token": "abc123def456..."
+  "session_token": "abc123def456ghi789..."
 }
 ```
 
 **Error Responses:**
 
-- `400 Bad Request` - Validation error (missing fields, invalid length); body may be Marshmallow field errors
+- `400 Bad Request` - Validation error (missing required fields, invalid field length)
 - `400 Bad Request` - Username already exists
-- `500 Internal Server Error` - Profile picture S3 upload failed (e.g. missing AWS credentials)
+- `500 Internal Server Error` - Account creation failed or upload error
 
 ---
 
 ### 2. Login
 
-**Route:** `POST /api/users/login/`  
-**Method:** `POST`  
+**HTTP Method:** `POST`  
+**Route:** `/users/login`  
 **Authentication:** None (Public)  
-**Description:** Login a user with username and password
+**Description:** Authenticate user with username and password, returns session token
 
 **Request Body:**
 
@@ -95,11 +92,13 @@ Public endpoints (no auth required):
 
 **Example Request:**
 
-```json
-{
-  "username": "johndoe",
-  "password": "securepass123"
-}
+```bash
+curl -X POST http://localhost:5000/api/users/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "johndoe",
+    "password": "securepass123"
+  }'
 ```
 
 **Example Response (200 OK):**
@@ -111,41 +110,43 @@ Public endpoints (no auth required):
     "id": 1,
     "name": "John Doe",
     "username": "johndoe",
-    "profile_url": "https://example.com/pfp.jpg",
-    "created_at": "2026-04-29T10:30:00+00:00"
+    "profile_url": "https://s3.amazonaws.com/inmybeli/pfp/default.jpg",
+    "created_at": "2026-04-30T10:30:00+00:00"
   },
-  "token": "xyz789abc123..."
+  "token": "abc123def456ghi789..."
 }
 ```
 
 **Error Responses:**
 
-- `400 Bad Request` - Validation error (missing fields)
-- `401 Unauthorized` - Invalid credentials
+- `400 Bad Request` - Validation error (missing required fields)
+- `401 Unauthorized` - Invalid credentials (wrong username or password)
 
 ---
 
 ### 3. Auto Login
 
-**Route:** `POST /api/users/autologin/`  
-**Method:** `POST`  
+**HTTP Method:** `POST`  
+**Route:** `/users/autologin`  
 **Authentication:** None (Public)  
-**Description:** Automatically login a user with a valid session token
+**Description:** Automatically authenticate user with existing session token
 
 **Request Body:**
 
 ```json
 {
-  "token": "string (required, valid session token)"
+  "token": "string (required)"
 }
 ```
 
 **Example Request:**
 
-```json
-{
-  "token": "abc123def456..."
-}
+```bash
+curl -X POST http://localhost:5000/api/users/autologin \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "abc123def456ghi789..."
+  }'
 ```
 
 **Example Response (200 OK):**
@@ -157,10 +158,10 @@ Public endpoints (no auth required):
     "id": 1,
     "name": "John Doe",
     "username": "johndoe",
-    "profile_url": "https://example.com/pfp.jpg",
-    "created_at": "2026-04-29T10:30:00+00:00"
+    "profile_url": "https://s3.amazonaws.com/inmybeli/pfp/default.jpg",
+    "created_at": "2026-04-30T10:30:00+00:00"
   },
-  "token": "abc123def456..."
+  "token": "abc123def456ghi789..."
 }
 ```
 
@@ -168,18 +169,24 @@ Public endpoints (no auth required):
 
 - `400 Bad Request` - Validation error (missing token)
 - `401 Unauthorized` - Invalid or expired token
-- `500 Internal Server Error` - User not found in database
 
 ---
 
 ### 4. Get Current User
 
-**Route:** `GET /api/users/`  
-**Method:** `GET`  
+**HTTP Method:** `GET`  
+**Route:** `/users`  
 **Authentication:** Required (Bearer token)  
 **Description:** Get information about the currently authenticated user
 
 **Request Body:** None
+
+**Example Request:**
+
+```bash
+curl -X GET http://localhost:5000/api/users \
+  -H "Authorization: Bearer abc123def456ghi789..."
+```
 
 **Example Response (200 OK):**
 
@@ -188,8 +195,263 @@ Public endpoints (no auth required):
   "id": 1,
   "name": "John Doe",
   "username": "johndoe",
-  "profile_url": "https://example.com/pfp.jpg",
-  "created_at": "2026-04-29T10:30:00+00:00"
+  "profile_url": "https://s3.amazonaws.com/inmybeli/pfp/default.jpg",
+  "created_at": "2026-04-30T10:30:00+00:00"
+}
+```
+
+**Error Responses:**
+
+- `401 Unauthorized` - Missing or invalid token
+- `401 Unauthorized` - User not found
+
+---
+
+## Recipes Endpoints
+
+### 1. Create Recipe
+
+**HTTP Method:** `POST`  
+**Route:** `/recipes`  
+**Authentication:** Required (Bearer token)  
+**Description:** Create a new recipe with optional image upload. Current user becomes the recipe owner.
+
+**Request Body:**
+
+- Content-Type: `multipart/form-data`
+- Fields:
+  - `title` (string, required, 1-255 chars) - Recipe title
+  - `description` (string, optional, max 2000 chars) - Recipe description
+  - `image` (file, optional) - Recipe image
+  - `time_minutes` (integer, optional, 0-10000) - Cooking time in minutes
+  - `cuisine` (string, optional, max 100 chars) - Cuisine type (e.g., "Italian", "Asian")
+  - `servings` (integer, optional, 1-1000) - Number of servings
+  - `ingredients` (JSON array, optional) - List of ingredients with details
+  - `instructions` (JSON array, optional) - Step-by-step cooking instructions
+
+**Example Request:**
+
+```bash
+curl -X POST http://localhost:5000/api/recipes \
+  -H "Authorization: Bearer abc123def456ghi789..." \
+  -F "title=Pasta Carbonara" \
+  -F "description=Classic Italian pasta dish" \
+  -F "image=@/path/to/recipe.jpg" \
+  -F "time_minutes=30" \
+  -F "cuisine=Italian" \
+  -F "servings=4" \
+  -F 'ingredients=[{"name":"spaghetti","amount":"400g"},{"name":"eggs","amount":"3"}]' \
+  -F 'instructions=["Boil water","Cook pasta","Mix eggs"]'
+```
+
+**Example Response (201 Created):**
+
+```json
+{
+  "id": 5,
+  "creator_id": 1,
+  "title": "Pasta Carbonara",
+  "description": "Classic Italian pasta dish",
+  "recipe_image_url": "https://s3.amazonaws.com/inmybeli/recipe/abc123.jpg",
+  "time_minutes": 30,
+  "cuisine": "Italian",
+  "servings": 4,
+  "ingredients": [
+    { "name": "spaghetti", "amount": "400g" },
+    { "name": "eggs", "amount": "3" }
+  ],
+  "instructions": ["Boil water", "Cook pasta", "Mix eggs"],
+  "created_at": "2026-04-30T10:30:00+00:00",
+  "updated_at": "2026-04-30T10:30:00+00:00"
+}
+```
+
+**Error Responses:**
+
+- `400 Bad Request` - Validation error (missing title, invalid field lengths)
+- `401 Unauthorized` - Missing or invalid token
+- `500 Internal Server Error` - Recipe creation failed or upload error
+
+---
+
+### 2. Get Recipe
+
+**HTTP Method:** `GET`  
+**Route:** `/recipes/<recipe_id>`  
+**Authentication:** Required (Bearer token)  
+**Description:** Get a single recipe by ID with full details
+
+**Request Body:** None
+
+**Example Request:**
+
+```bash
+curl -X GET http://localhost:5000/api/recipes/5 \
+  -H "Authorization: Bearer abc123def456ghi789..."
+```
+
+**Example Response (200 OK):**
+
+```json
+{
+  "id": 5,
+  "creator_id": 1,
+  "title": "Pasta Carbonara",
+  "description": "Classic Italian pasta dish",
+  "recipe_image_url": "https://s3.amazonaws.com/inmybeli/recipe/abc123.jpg",
+  "time_minutes": 30,
+  "cuisine": "Italian",
+  "servings": 4,
+  "ingredients": [
+    { "name": "spaghetti", "amount": "400g" },
+    { "name": "eggs", "amount": "3" }
+  ],
+  "instructions": ["Boil water", "Cook pasta", "Mix eggs"],
+  "created_at": "2026-04-30T10:30:00+00:00",
+  "updated_at": "2026-04-30T10:30:00+00:00"
+}
+```
+
+**Error Responses:**
+
+- `401 Unauthorized` - Missing or invalid token
+- `404 Not Found` - Recipe not found
+
+---
+
+### 3. Update Recipe
+
+**HTTP Method:** `POST`  
+**Route:** `/recipes/<recipe_id>`  
+**Authentication:** Required (Bearer token)  
+**Description:** Update an existing recipe. Only the recipe creator can update it. All fields are optional.
+
+**Request Body:**
+
+- Content-Type: `multipart/form-data`
+- Fields (all optional):
+  - `title` (string, 1-255 chars)
+  - `description` (string, max 2000 chars)
+  - `image` (file) - Replaces existing image
+  - `time_minutes` (integer, 0-10000)
+  - `cuisine` (string, max 100 chars)
+  - `servings` (integer, 1-1000)
+  - `ingredients` (JSON array)
+  - `instructions` (JSON array)
+
+**Example Request:**
+
+```bash
+curl -X POST http://localhost:5000/api/recipes/5 \
+  -H "Authorization: Bearer abc123def456ghi789..." \
+  -F "servings=6" \
+  -F "time_minutes=35"
+```
+
+**Example Response (200 OK):**
+
+```json
+{
+  "id": 5,
+  "creator_id": 1,
+  "title": "Pasta Carbonara",
+  "description": "Classic Italian pasta dish",
+  "recipe_image_url": "https://s3.amazonaws.com/inmybeli/recipe/abc123.jpg",
+  "time_minutes": 35,
+  "cuisine": "Italian",
+  "servings": 6,
+  "ingredients": [
+    { "name": "spaghetti", "amount": "400g" },
+    { "name": "eggs", "amount": "3" }
+  ],
+  "instructions": ["Boil water", "Cook pasta", "Mix eggs"],
+  "created_at": "2026-04-30T10:30:00+00:00",
+  "updated_at": "2026-04-30T11:45:00+00:00"
+}
+```
+
+**Error Responses:**
+
+- `400 Bad Request` - Validation error
+- `401 Unauthorized` - Missing or invalid token
+- `403 Forbidden` - User is not the recipe creator
+- `404 Not Found` - Recipe not found
+- `500 Internal Server Error` - Update failed
+
+---
+
+### 4. Delete Recipe
+
+**HTTP Method:** `DELETE`  
+**Route:** `/recipes/<recipe_id>`  
+**Authentication:** Required (Bearer token)  
+**Description:** Delete a recipe. Only the recipe creator can delete it.
+
+**Request Body:** None
+
+**Example Request:**
+
+```bash
+curl -X DELETE http://localhost:5000/api/recipes/5 \
+  -H "Authorization: Bearer abc123def456ghi789..."
+```
+
+**Example Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "message": "Recipe deleted"
+}
+```
+
+**Error Responses:**
+
+- `401 Unauthorized` - Missing or invalid token
+- `403 Forbidden` - User is not the recipe creator
+- `404 Not Found` - Recipe not found
+
+---
+
+### 5. Get Recipes by User
+
+**HTTP Method:** `GET`  
+**Route:** `/users/<user_id>/recipes`  
+**Authentication:** Required (Bearer token)  
+**Description:** Get all recipes created by a specific user (returns previews, not full details)
+
+**Request Body:** None
+
+**Example Request:**
+
+```bash
+curl -X GET http://localhost:5000/api/users/1/recipes \
+  -H "Authorization: Bearer abc123def456ghi789..."
+```
+
+**Example Response (200 OK):**
+
+```json
+{
+  "user_id": 1,
+  "recipes": [
+    {
+      "id": 5,
+      "creator_id": 1,
+      "title": "Pasta Carbonara",
+      "image_url": "https://s3.amazonaws.com/inmybeli/recipe/abc123.jpg",
+      "time_minutes": 30,
+      "cuisine": "Italian"
+    },
+    {
+      "id": 6,
+      "creator_id": 1,
+      "title": "Risotto",
+      "image_url": "https://s3.amazonaws.com/inmybeli/recipe/def456.jpg",
+      "time_minutes": 45,
+      "cuisine": "Italian"
+    }
+  ]
 }
 ```
 
@@ -199,45 +461,525 @@ Public endpoints (no auth required):
 
 ---
 
-### 5. Get All Tokens
+### 6. Get Recipe Feed
 
-**Route:** `GET /api/users/tokens`  
-**Method:** `GET`  
-**Authentication:** None (Public)  
-**Description:** Get all active session tokens (for debugging/testing only)
+**HTTP Method:** `GET`  
+**Route:** `/feed/recipes`  
+**Authentication:** Required (Bearer token)  
+**Description:** Get all recipes for the Discover feed. Recipes are ordered by date (newest first), with recipes from friends prioritized within each day. Includes save counts.
 
 **Request Body:** None
+
+**Example Request:**
+
+```bash
+curl -X GET http://localhost:5000/api/feed/recipes \
+  -H "Authorization: Bearer abc123def456ghi789..."
+```
 
 **Example Response (200 OK):**
 
 ```json
 {
-  "tokens": [
+  "recipes": [
     {
-      "id": 1,
-      "token": "abc123def456...",
-      "user_id": 1,
-      "expiresAt": "2026-04-30T10:30:00",
-      "created_at": "2026-04-29T10:30:00+00:00"
+      "id": 5,
+      "creator_id": 1,
+      "title": "Pasta Carbonara",
+      "image_url": "https://s3.amazonaws.com/inmybeli/recipe/abc123.jpg",
+      "time_minutes": 30,
+      "cuisine": "Italian",
+      "total_saves_count": 12
+    },
+    {
+      "id": 6,
+      "creator_id": 2,
+      "title": "Risotto",
+      "image_url": "https://s3.amazonaws.com/inmybeli/recipe/def456.jpg",
+      "time_minutes": 45,
+      "cuisine": "Italian",
+      "total_saves_count": 8
     }
   ]
 }
 ```
 
+**Error Responses:**
+
+- `401 Unauthorized` - Missing or invalid token
+
+---
+
+## Reviews Endpoints
+
+### 1. Create or Update Review
+
+**HTTP Method:** `POST`  
+**Route:** `/recipes/<recipe_id>/reviews`  
+**Authentication:** Required (Bearer token)  
+**Description:** Create a new review for a recipe or update existing review. A user can have only one review per recipe. If a review already exists, it will be updated.
+
+**Request Body:**
+
+```json
+{
+  "rating": "integer (required, 1-5)",
+  "text": "string (optional, max 2000 chars)"
+}
+```
+
+**Example Request:**
+
+```bash
+curl -X POST http://localhost:5000/api/recipes/5/reviews \
+  -H "Authorization: Bearer abc123def456ghi789..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "rating": 5,
+    "text": "Amazing pasta! Perfect carbonara."
+  }'
+```
+
+**Example Response (200 OK or 201 Created):**
+
+```json
+{
+  "id": 12,
+  "user_id": 1,
+  "recipe_id": 5,
+  "rating": 5,
+  "text": "Amazing pasta! Perfect carbonara.",
+  "created_at": "2026-04-30T10:30:00+00:00",
+  "updated_at": "2026-04-30T10:30:00+00:00"
+}
+```
+
+**Error Responses:**
+
+- `400 Bad Request` - Validation error (missing rating, invalid rating value)
+- `401 Unauthorized` - Missing or invalid token
+- `404 Not Found` - Recipe not found
+
+---
+
+### 2. Get Reviews for Recipe
+
+**HTTP Method:** `GET`  
+**Route:** `/recipes/<recipe_id>/reviews`  
+**Authentication:** Required (Bearer token)  
+**Description:** Get all reviews for a specific recipe, ordered by most recently updated first
+
+**Request Body:** None
+
+**Example Request:**
+
+```bash
+curl -X GET http://localhost:5000/api/recipes/5/reviews \
+  -H "Authorization: Bearer abc123def456ghi789..."
+```
+
+**Example Response (200 OK):**
+
+```json
+{
+  "recipe_id": 5,
+  "reviews": [
+    {
+      "id": 12,
+      "user_id": 1,
+      "recipe_id": 5,
+      "rating": 5,
+      "text": "Amazing pasta! Perfect carbonara.",
+      "created_at": "2026-04-30T10:30:00+00:00",
+      "updated_at": "2026-04-30T10:30:00+00:00"
+    },
+    {
+      "id": 13,
+      "user_id": 2,
+      "recipe_id": 5,
+      "rating": 4,
+      "text": "Very good, but a bit salty",
+      "created_at": "2026-04-29T15:20:00+00:00",
+      "updated_at": "2026-04-29T15:20:00+00:00"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- `401 Unauthorized` - Missing or invalid token
+- `404 Not Found` - Recipe not found
+
+---
+
+### 3. Delete Review
+
+**HTTP Method:** `DELETE`  
+**Route:** `/recipes/<recipe_id>/reviews`  
+**Authentication:** Required (Bearer token)  
+**Description:** Delete current user's review of a recipe
+
+**Request Body:** None
+
+**Example Request:**
+
+```bash
+curl -X DELETE http://localhost:5000/api/recipes/5/reviews \
+  -H "Authorization: Bearer abc123def456ghi789..."
+```
+
+**Example Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "message": "Review deleted"
+}
+```
+
+**Error Responses:**
+
+- `401 Unauthorized` - Missing or invalid token
+- `404 Not Found` - Review not found
+
+---
+
+## Cookbooks Endpoints
+
+### 1. Get All Cookbooks
+
+**HTTP Method:** `GET`  
+**Route:** `/cookbooks`  
+**Authentication:** Required (Bearer token)  
+**Description:** Get all cookbooks for the current user
+
+**Request Body:** None
+
+**Example Request:**
+
+```bash
+curl -X GET http://localhost:5000/api/cookbooks \
+  -H "Authorization: Bearer abc123def456ghi789..."
+```
+
+**Example Response (200 OK):**
+
+```json
+{
+  "user_id": 1,
+  "cookbooks": [
+    {
+      "id": 1,
+      "name": "Saved Recipes",
+      "description": "My favorite recipes"
+    },
+    {
+      "id": 2,
+      "name": "Italian Dishes",
+      "description": "Classic Italian cuisine"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- `401 Unauthorized` - Missing or invalid token
+
+---
+
+### 2. Create Cookbook
+
+**HTTP Method:** `POST`  
+**Route:** `/cookbooks`  
+**Authentication:** Required (Bearer token)  
+**Description:** Create a new cookbook for the current user
+
+**Request Body:**
+
+```json
+{
+  "name": "string (required, 1-255 chars)",
+  "description": "string (optional, max 1000 chars)"
+}
+```
+
+**Example Request:**
+
+```bash
+curl -X POST http://localhost:5000/api/cookbooks \
+  -H "Authorization: Bearer abc123def456ghi789..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Breakfast Ideas",
+    "description": "Quick and easy breakfast recipes"
+  }'
+```
+
+**Example Response (201 Created):**
+
+```json
+{
+  "success": true,
+  "message": "Cookbook created successfully",
+  "cookbook": {
+    "id": 3,
+    "name": "Breakfast Ideas",
+    "description": "Quick and easy breakfast recipes",
+    "recipes": []
+  }
+}
+```
+
+**Error Responses:**
+
+- `400 Bad Request` - Validation error (missing name, invalid lengths)
+- `401 Unauthorized` - Missing or invalid token
+
+---
+
+### 3. Get Cookbook
+
+**HTTP Method:** `GET`  
+**Route:** `/cookbooks/<cookbook_id>`  
+**Authentication:** Required (Bearer token)  
+**Description:** Get a specific cookbook by ID with all its recipes
+
+**Request Body:** None
+
+**Example Request:**
+
+```bash
+curl -X GET http://localhost:5000/api/cookbooks/1 \
+  -H "Authorization: Bearer abc123def456ghi789..."
+```
+
+**Example Response (200 OK):**
+
+```json
+{
+  "cookbook": {
+    "id": 1,
+    "name": "Saved Recipes",
+    "description": "My favorite recipes",
+    "recipes": [
+      {
+        "id": 5,
+        "creator_id": 1,
+        "title": "Pasta Carbonara",
+        "image_url": "https://s3.amazonaws.com/inmybeli/recipe/abc123.jpg",
+        "time_minutes": 30,
+        "cuisine": "Italian"
+      }
+    ]
+  }
+}
+```
+
+**Error Responses:**
+
+- `401 Unauthorized` - Missing or invalid token
+- `404 Not Found` - Cookbook not found
+
+---
+
+### 4. Update Cookbook
+
+**HTTP Method:** `PUT`  
+**Route:** `/cookbooks/<cookbook_id>`  
+**Authentication:** Required (Bearer token)  
+**Description:** Update cookbook name or description. Only the cookbook creator can update it.
+
+**Request Body:**
+
+```json
+{
+  "name": "string (optional, 1-255 chars)",
+  "description": "string (optional, max 1000 chars)"
+}
+```
+
+**Example Request:**
+
+```bash
+curl -X PUT http://localhost:5000/api/cookbooks/1 \
+  -H "Authorization: Bearer abc123def456ghi789..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "description": "My absolute favorite recipes"
+  }'
+```
+
+**Example Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "message": "Cookbook updated successfully",
+  "cookbook": {
+    "id": 1,
+    "name": "Saved Recipes",
+    "description": "My absolute favorite recipes",
+    "recipes": []
+  }
+}
+```
+
+**Error Responses:**
+
+- `400 Bad Request` - Validation error
+- `401 Unauthorized` - Missing or invalid token
+- `404 Not Found` - Cookbook not found
+
+---
+
+### 5. Delete Cookbook
+
+**HTTP Method:** `DELETE`  
+**Route:** `/cookbooks/<cookbook_id>`  
+**Authentication:** Required (Bearer token)  
+**Description:** Delete a cookbook. Only the cookbook creator can delete it.
+
+**Request Body:** None
+
+**Example Request:**
+
+```bash
+curl -X DELETE http://localhost:5000/api/cookbooks/2 \
+  -H "Authorization: Bearer abc123def456ghi789..."
+```
+
+**Example Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "message": "Cookbook deleted successfully"
+}
+```
+
+**Error Responses:**
+
+- `401 Unauthorized` - Missing or invalid token
+- `404 Not Found` - Cookbook not found
+
+---
+
+### 6. Add Recipe to Cookbook
+
+**HTTP Method:** `POST`  
+**Route:** `/cookbooks/<cookbook_id>/recipes`  
+**Authentication:** Required (Bearer token)  
+**Description:** Add a recipe to a cookbook. Only the cookbook creator can add recipes to their cookbook.
+
+**Request Body:**
+
+```json
+{
+  "recipe_id": "integer (required)"
+}
+```
+
+**Example Request:**
+
+```bash
+curl -X POST http://localhost:5000/api/cookbooks/1/recipes \
+  -H "Authorization: Bearer abc123def456ghi789..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "recipe_id": 5
+  }'
+```
+
+**Example Response (201 Created):**
+
+```json
+{
+  "success": true,
+  "message": "Recipe added to cookbook",
+  "cookbook": {
+    "id": 1,
+    "name": "Saved Recipes",
+    "description": "My favorite recipes",
+    "recipes": [
+      {
+        "id": 5,
+        "creator_id": 1,
+        "title": "Pasta Carbonara",
+        "image_url": "https://s3.amazonaws.com/inmybeli/recipe/abc123.jpg",
+        "time_minutes": 30,
+        "cuisine": "Italian"
+      }
+    ]
+  }
+}
+```
+
+**Error Responses:**
+
+- `400 Bad Request` - Validation error
+- `401 Unauthorized` - Missing or invalid token
+- `404 Not Found` - Cookbook or recipe not found
+- `409 Conflict` - Recipe already in cookbook
+
+---
+
+### 7. Remove Recipe from Cookbook
+
+**HTTP Method:** `DELETE`  
+**Route:** `/cookbooks/<cookbook_id>/recipes/<recipe_id>`  
+**Authentication:** Required (Bearer token)  
+**Description:** Remove a recipe from a cookbook. Only the cookbook creator can remove recipes.
+
+**Request Body:** None
+
+**Example Request:**
+
+```bash
+curl -X DELETE http://localhost:5000/api/cookbooks/1/recipes/5 \
+  -H "Authorization: Bearer abc123def456ghi789..."
+```
+
+**Example Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "message": "Recipe removed from cookbook",
+  "cookbook": {
+    "id": 1,
+    "name": "Saved Recipes",
+    "description": "My favorite recipes",
+    "recipes": []
+  }
+}
+```
+
+**Error Responses:**
+
+- `401 Unauthorized` - Missing or invalid token
+- `404 Not Found` - Cookbook, recipe, or association not found
+
 ---
 
 ## Friends Endpoints
 
-All friends endpoints require authentication.
-
 ### 1. Get Friends
 
-**Route:** `/api/friends/`  
-**Method:** `GET`  
-**Authentication:** Required  
+**HTTP Method:** `GET`  
+**Route:** `/friends`  
+**Authentication:** Required (Bearer token)  
 **Description:** Get all accepted friends for the current user
 
 **Request Body:** None
+
+**Example Request:**
+
+```bash
+curl -X GET http://localhost:5000/api/friends \
+  -H "Authorization: Bearer abc123def456ghi789..."
+```
 
 **Example Response (200 OK):**
 
@@ -247,26 +989,37 @@ All friends endpoints require authentication.
   "friends": [
     {
       "id": 2,
-      "username": "janedoe"
+      "username": "alice"
     },
     {
       "id": 3,
-      "username": "bobsmith"
+      "username": "bob"
     }
   ]
 }
 ```
 
+**Error Responses:**
+
+- `401 Unauthorized` - Missing or invalid token
+
 ---
 
-### 2. Get Received Friend Requests
+### 2. Get Pending Received Friend Requests
 
-**Route:** `/api/friends/pending/received/`  
-**Method:** `GET`  
-**Authentication:** Required  
-**Description:** Get all received pending friend requests
+**HTTP Method:** `GET`  
+**Route:** `/friends/pending/received`  
+**Authentication:** Required (Bearer token)  
+**Description:** Get all pending friend requests received by the current user
 
 **Request Body:** None
+
+**Example Request:**
+
+```bash
+curl -X GET http://localhost:5000/api/friends/pending/received \
+  -H "Authorization: Bearer abc123def456ghi789..."
+```
 
 **Example Response (200 OK):**
 
@@ -276,23 +1029,39 @@ All friends endpoints require authentication.
   "received_pending_requests": [
     {
       "id": 4,
-      "username": "alicekim",
-      "name": "Alice Kim"
+      "username": "charlie",
+      "name": "Charlie Brown"
+    },
+    {
+      "id": 5,
+      "username": "diana",
+      "name": "Diana Prince"
     }
   ]
 }
 ```
 
+**Error Responses:**
+
+- `401 Unauthorized` - Missing or invalid token
+
 ---
 
-### 3. Get Sent Friend Requests
+### 3. Get Pending Sent Friend Requests
 
-**Route:** `/api/friends/pending/sent/`  
-**Method:** `GET`  
-**Authentication:** Required  
-**Description:** Get all sent pending friend requests
+**HTTP Method:** `GET`  
+**Route:** `/friends/pending/sent`  
+**Authentication:** Required (Bearer token)  
+**Description:** Get all pending friend requests sent by the current user
 
 **Request Body:** None
+
+**Example Request:**
+
+```bash
+curl -X GET http://localhost:5000/api/friends/pending/sent \
+  -H "Authorization: Bearer abc123def456ghi789..."
+```
 
 **Example Response (200 OK):**
 
@@ -301,30 +1070,35 @@ All friends endpoints require authentication.
   "user_id": 1,
   "sent_pending_requests": [
     {
-      "id": 5,
-      "username": "mikechen",
-      "name": "Mike Chen"
+      "id": 6,
+      "username": "eve",
+      "name": "Eve Wilson"
     }
   ]
 }
 ```
 
+**Error Responses:**
+
+- `401 Unauthorized` - Missing or invalid token
+
 ---
 
 ### 4. Search Users
 
-**Route:** `/api/friends/search/<string:name>`  
-**Method:** `GET`  
-**Authentication:** Required  
-**Description:** Search for users by username (case-insensitive, supports partial matches)
-
-**Path Parameters:**
-
-- `name` (string) - Search query (substring of username)
+**HTTP Method:** `GET`  
+**Route:** `/friends/search/<name>`  
+**Authentication:** Required (Bearer token)  
+**Description:** Search for users by username. Returns top 20 results containing the search string (case-insensitive partial match).
 
 **Request Body:** None
 
-**Example Request:** `/api/friends/search/john`
+**Example Request:**
+
+```bash
+curl -X GET http://localhost:5000/api/friends/search/al \
+  -H "Authorization: Bearer abc123def456ghi789..."
+```
 
 **Example Response (200 OK):**
 
@@ -332,46 +1106,53 @@ All friends endpoints require authentication.
 {
   "results": [
     {
-      "id": 1,
-      "name": "John Doe",
-      "username": "johndoe",
-      "profile_url": "https://example.com/pfp1.jpg",
-      "created_at": "2026-04-29T10:30:00+00:00"
+      "id": 2,
+      "name": "Alice Smith",
+      "username": "alice",
+      "profile_url": "https://s3.amazonaws.com/inmybeli/pfp/alice.jpg",
+      "created_at": "2026-04-20T10:30:00+00:00"
     },
     {
-      "id": 6,
-      "name": "Johnny Walker",
-      "username": "johnnywalker",
-      "profile_url": "https://example.com/pfp2.jpg",
-      "created_at": "2026-04-29T11:00:00+00:00"
+      "id": 7,
+      "name": "Albert Johnson",
+      "username": "albertj",
+      "profile_url": "https://s3.amazonaws.com/inmybeli/pfp/albert.jpg",
+      "created_at": "2026-04-15T14:20:00+00:00"
     }
   ]
 }
 ```
 
+**Error Responses:**
+
+- `401 Unauthorized` - Missing or invalid token
+
 ---
 
 ### 5. Send Friend Request
 
-**Route:** `/api/friends/request/`  
-**Method:** `POST`  
-**Authentication:** Required  
+**HTTP Method:** `POST`  
+**Route:** `/friends/request`  
+**Authentication:** Required (Bearer token)  
 **Description:** Send a friend request to another user
 
 **Request Body:**
 
 ```json
 {
-  "friend_id": "integer (required, ID of user to request)"
+  "friend_id": "integer (required)"
 }
 ```
 
 **Example Request:**
 
-```json
-{
-  "friend_id": 2
-}
+```bash
+curl -X POST http://localhost:5000/api/friends/request \
+  -H "Authorization: Bearer abc123def456ghi789..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "friend_id": 4
+  }'
 ```
 
 **Example Response (201 Created):**
@@ -385,33 +1166,36 @@ All friends endpoints require authentication.
 
 **Error Responses:**
 
-- `400 Bad Request` - Cannot be friends with yourself
-- `400 Bad Request` - Friend request already sent / already friends
+- `400 Bad Request` - Validation error or invalid friend request (already friends, request already sent, etc.)
+- `401 Unauthorized` - Missing or invalid token
 - `404 Not Found` - Friend not found
 
 ---
 
 ### 6. Accept Friend Request
 
-**Route:** `/api/friends/accept/`  
-**Method:** `POST`  
-**Authentication:** Required  
-**Description:** Accept a pending friend request
+**HTTP Method:** `POST`  
+**Route:** `/friends/accept`  
+**Authentication:** Required (Bearer token)  
+**Description:** Accept a pending friend request from another user
 
 **Request Body:**
 
 ```json
 {
-  "friend_id": "integer (required, ID of user to accept)"
+  "friend_id": "integer (required)"
 }
 ```
 
 **Example Request:**
 
-```json
-{
-  "friend_id": 4
-}
+```bash
+curl -X POST http://localhost:5000/api/friends/accept \
+  -H "Authorization: Bearer abc123def456ghi789..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "friend_id": 4
+  }'
 ```
 
 **Example Response (200 OK):**
@@ -425,33 +1209,36 @@ All friends endpoints require authentication.
 
 **Error Responses:**
 
-- `400 Bad Request` - Cannot be friends with yourself
-- `400 Bad Request` - No pending request / already friends
+- `400 Bad Request` - Validation error or invalid friendship state
+- `401 Unauthorized` - Missing or invalid token
 - `404 Not Found` - Friend not found
 
 ---
 
 ### 7. Decline Friend Request
 
-**Route:** `/api/friends/decline/`  
-**Method:** `POST`  
-**Authentication:** Required  
-**Description:** Decline a pending friend request
+**HTTP Method:** `POST`  
+**Route:** `/friends/decline`  
+**Authentication:** Required (Bearer token)  
+**Description:** Decline a pending friend request from another user. You can only decline requests sent to you, not those you sent.
 
 **Request Body:**
 
 ```json
 {
-  "friend_id": "integer (required, ID of user to decline)"
+  "friend_id": "integer (required)"
 }
 ```
 
 **Example Request:**
 
-```json
-{
-  "friend_id": 5
-}
+```bash
+curl -X POST http://localhost:5000/api/friends/decline \
+  -H "Authorization: Bearer abc123def456ghi789..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "friend_id": 4
+  }'
 ```
 
 **Example Response (200 OK):**
@@ -465,26 +1252,27 @@ All friends endpoints require authentication.
 
 **Error Responses:**
 
-- `400 Bad Request` - Cannot decline yourself
-- `400 Bad Request` - No pending request to decline
-- `404 Not Found` - Friend not found
+- `400 Bad Request` - Validation error or invalid state (e.g., trying to decline request you sent)
+- `401 Unauthorized` - Missing or invalid token
+- `404 Not Found` - No pending friend request found
 
 ---
 
 ### 8. Remove Friend
 
-**Route:** `/api/friends/<int:friend_id>/`  
-**Method:** `DELETE`  
-**Authentication:** Required  
-**Description:** Remove an accepted friend
-
-**Path Parameters:**
-
-- `friend_id` (integer) - ID of friend to remove
+**HTTP Method:** `DELETE`  
+**Route:** `/friends/<friend_id>`  
+**Authentication:** Required (Bearer token)  
+**Description:** Remove a friend from the friend list
 
 **Request Body:** None
 
-**Example Request:** `/api/friends/2/`
+**Example Request:**
+
+```bash
+curl -X DELETE http://localhost:5000/api/friends/2 \
+  -H "Authorization: Bearer abc123def456ghi789..."
+```
 
 **Example Response (200 OK):**
 
@@ -498,24 +1286,26 @@ All friends endpoints require authentication.
 **Error Responses:**
 
 - `400 Bad Request` - Cannot remove yourself
-- `404 Not Found` - Friend not found / friendship not found
+- `401 Unauthorized` - Missing or invalid token
+- `404 Not Found` - Friendship not found
 
 ---
 
-### 9. Check Friendship Status
+### 9. Check Friend Status
 
-**Route:** `/api/friends/<int:friend_id>/`  
-**Method:** `GET`  
-**Authentication:** Required  
-**Description:** Check the relationship status between current user and another user
-
-**Path Parameters:**
-
-- `friend_id` (integer) - ID of user to check
+**HTTP Method:** `GET`  
+**Route:** `/friends/<friend_id>`  
+**Authentication:** Required (Bearer token)  
+**Description:** Check if two users are friends
 
 **Request Body:** None
 
-**Example Request:** `/api/friends/2/`
+**Example Request:**
+
+```bash
+curl -X GET http://localhost:5000/api/friends/2 \
+  -H "Authorization: Bearer abc123def456ghi789..."
+```
 
 **Example Response (200 OK):**
 
@@ -523,599 +1313,12 @@ All friends endpoints require authentication.
 {
   "user_id": 1,
   "friend_id": 2,
-  "is_friend": "accepted"
+  "is_friend": true
 }
 ```
-
-**Possible values for `is_friend`:** "accepted", "pending", "blocked", "None"
 
 **Error Responses:**
 
 - `400 Bad Request` - Cannot check friendship with yourself
+- `401 Unauthorized` - Missing or invalid token
 - `404 Not Found` - Friend not found
-
----
-
-## Cookbooks Endpoints
-
-All cookbook endpoints require authentication.
-
-### 1. Get All Cookbooks
-
-**Route:** `/api/cookbooks/`  
-**Method:** `GET`  
-**Authentication:** Required  
-**Description:** Get all cookbooks created by the current user
-
-**Request Body:** None
-
-**Example Response (200 OK):**
-
-```json
-{
-  "user_id": 1,
-  "cookbooks": [
-    {
-      "id": 1,
-      "name": "Italian Favorites",
-      "description": "My favorite Italian recipes"
-    },
-    {
-      "id": 2,
-      "name": "Quick Weeknight Dinners",
-      "description": null
-    }
-  ]
-}
-```
-
----
-
-### 2. Create Cookbook
-
-**Route:** `/api/cookbooks/`  
-**Method:** `POST`  
-**Authentication:** Required  
-**Description:** Create a new cookbook
-
-**Request Body:**
-
-```json
-{
-  "name": "string (required, 1-255 chars)",
-  "description": "string (optional, max 1000 chars)"
-}
-```
-
-**Example Request:**
-
-```json
-{
-  "name": "Desserts",
-  "description": "Collection of favorite dessert recipes"
-}
-```
-
-**Example Response (201 Created):**
-
-```json
-{
-  "success": true,
-  "message": "Cookbook created successfully",
-  "cookbook": {
-    "id": 3,
-    "name": "Desserts",
-    "description": "Collection of favorite dessert recipes",
-    "recipes": []
-  }
-}
-```
-
-**Error Responses:**
-
-- `400 Bad Request` - Validation error (missing name)
-
----
-
-### 3. Get Cookbook
-
-**Route:** `/api/cookbooks/<int:cookbook_id>/`  
-**Method:** `GET`  
-**Authentication:** Required  
-**Description:** Get a specific cookbook by ID with all recipes
-
-**Path Parameters:**
-
-- `cookbook_id` (integer) - ID of cookbook to retrieve
-
-**Request Body:** None
-
-**Example Request:** `/api/cookbooks/1/`
-
-**Example Response (200 OK):**
-
-```json
-{
-  "cookbook": {
-    "id": 1,
-    "name": "Italian Favorites",
-    "description": "My favorite Italian recipes",
-    "recipes": [
-      {
-        "id": 1,
-        "creator_id": 1,
-        "title": "Spaghetti Carbonara",
-        "image_url": "https://example.com/image.jpg",
-        "time_minutes": 30,
-        "cuisine": "Italian"
-      }
-    ]
-  }
-}
-```
-
-**Error Responses:**
-
-- `404 Not Found` - Cookbook not found or not owned by current user
-
----
-
-### 4. Update Cookbook
-
-**Route:** `/api/cookbooks/<int:cookbook_id>/`  
-**Method:** `PUT`  
-**Authentication:** Required  
-**Description:** Update name and/or description of a cookbook (only creator can update)
-
-**Path Parameters:**
-
-- `cookbook_id` (integer) - ID of cookbook to update
-
-**Request Body:**
-
-```json
-{
-  "name": "string (optional, 1-255 chars)",
-  "description": "string (optional, max 1000 chars)"
-}
-```
-
-**Example Request:**
-
-```json
-{
-  "name": "Italian Classics",
-  "description": "Updated description"
-}
-```
-
-**Example Response (200 OK):**
-
-```json
-{
-  "success": true,
-  "message": "Cookbook updated successfully",
-  "cookbook": {
-    "id": 1,
-    "name": "Italian Classics",
-    "description": "Updated description",
-    "recipes": []
-  }
-}
-```
-
-**Error Responses:**
-
-- `400 Bad Request` - Validation error
-- `404 Not Found` - Cookbook not found or not owned by current user
-
----
-
-### 5. Delete Cookbook
-
-**Route:** `/api/cookbooks/<int:cookbook_id>/`  
-**Method:** `DELETE`  
-**Authentication:** Required  
-**Description:** Delete a cookbook (only creator can delete)
-
-**Path Parameters:**
-
-- `cookbook_id` (integer) - ID of cookbook to delete
-
-**Request Body:** None
-
-**Example Request:** `/api/cookbooks/1/`
-
-**Example Response (200 OK):**
-
-```json
-{
-  "success": true,
-  "message": "Cookbook deleted successfully"
-}
-```
-
-**Error Responses:**
-
-- `404 Not Found` - Cookbook not found or not owned by current user
-
----
-
-### 6. Add Recipe to Cookbook
-
-**Route:** `/api/cookbooks/<int:cookbook_id>/recipes/`  
-**Method:** `POST`  
-**Authentication:** Required  
-**Description:** Add a recipe to a cookbook
-
-**Path Parameters:**
-
-- `cookbook_id` (integer) - ID of cookbook
-
-**Request Body:**
-
-```json
-{
-  "recipe_id": "integer (required, ID of recipe to add)"
-}
-```
-
-**Example Request:**
-
-```json
-{
-  "recipe_id": 5
-}
-```
-
-**Example Response (201 Created):**
-
-```json
-{
-  "success": true,
-  "message": "Recipe added to cookbook",
-  "cookbook": {
-    "id": 1,
-    "name": "Italian Favorites",
-    "description": "My favorite Italian recipes",
-    "recipes": [
-      {
-        "id": 5,
-        "creator_id": 2,
-        "title": "Pesto Pasta",
-        "image_url": "https://example.com/pesto.jpg",
-        "time_minutes": 20,
-        "cuisine": "Italian"
-      }
-    ]
-  }
-}
-```
-
-**Error Responses:**
-
-- `400 Bad Request` - Validation error
-- `404 Not Found` - Cookbook not found or not owned by current user
-- `404 Not Found` - Recipe not found
-- `409 Conflict` - Recipe already in cookbook
-
----
-
-### 7. Remove Recipe from Cookbook
-
-**Route:** `/api/cookbooks/<int:cookbook_id>/recipes/<int:recipe_id>/`  
-**Method:** `DELETE`  
-**Authentication:** Required  
-**Description:** Remove a recipe from a cookbook
-
-**Path Parameters:**
-
-- `cookbook_id` (integer) - ID of cookbook
-- `recipe_id` (integer) - ID of recipe to remove
-
-**Request Body:** None
-
-**Example Request:** `/api/cookbooks/1/recipes/5/`
-
-**Example Response (200 OK):**
-
-```json
-{
-  "success": true,
-  "message": "Recipe removed from cookbook"
-}
-```
-
-**Error Responses:**
-
-- `404 Not Found` - Cookbook not found or not owned by current user
-- `404 Not Found` - Recipe not found
-- `404 Not Found` - Recipe not in cookbook
-
----
-
-## Recipes Endpoints
-
-All recipe endpoints require authentication (`Authorization: Bearer <token>`).
-
-### 1. Create Recipe
-
-**Route:** `POST /api/recipes/`  
-**Method:** `POST`  
-**Authentication:** Required  
-**Description:** Create a new recipe for the current user. Uses **multipart/form-data** (same pattern as account creation). Optional file field `image` is uploaded to S3; `ingredients` / `instructions` may be sent as JSON strings so Marshmallow can parse them.
-
-**Request:** `multipart/form-data`
-
-| Field            | Type | Notes |
-|------------------|------|--------|
-| `title`          | text | Required |
-| `description`    | text | Optional |
-| `time_minutes`   | text | Optional integer string |
-| `cuisine`        | text | Optional |
-| `servings`       | text | Optional integer string |
-| `ingredients`    | text | Optional; JSON array of objects, e.g. `[{"name":"flour","amount":"2 cups"}]` |
-| `instructions` | text | Optional; JSON array of strings |
-| `image`          | file | Optional in schema; **recommended** — model stores `recipe_image_url` / `recipe_image_s3_key` |
-
-**Example request (conceptual):** form fields + file `image`.
-
-**Example Response (201 Created):** `Recipe.serialize()` — full recipe
-
-```json
-{
-  "id": 1,
-  "creator_id": 1,
-  "title": "Chocolate Chip Cookies",
-  "description": "Classic cookies",
-  "recipe_image_url": "https://your-bucket.s3.amazonaws.com/recipe/uuid.jpg",
-  "time_minutes": 30,
-  "cuisine": "American",
-  "servings": 24,
-  "ingredients": [{ "name": "flour", "amount": "2 cups" }],
-  "instructions": ["Preheat oven", "Mix", "Bake"],
-  "created_at": "2026-04-29T10:30:00+00:00",
-  "updated_at": "2026-04-29T10:30:00+00:00"
-}
-```
-
-**Error Responses:** `400` validation; `500` S3 upload or DB error.
-
----
-
-### 2. Get Recipe
-
-**Route:** `GET /api/recipes/<recipe_id>/`  
-**Method:** `GET`  
-**Authentication:** Required  
-
-**Example Request:** `GET /api/recipes/1/`
-
-**Example Response (200 OK):** same shape as create response (full `Recipe.serialize()`).
-
-**Error Responses:** `404` recipe not found.
-
----
-
-### 3. Update Recipe
-
-**Route:** `POST /api/recipes/<recipe_id>/`  
-**Method:** `POST` (not PUT)  
-**Authentication:** Required  
-**Description:** Update recipe; **only the creator** may update. Uses **multipart/form-data**. Include only fields you want to change. Optional file `image` replaces the image (new S3 upload under `recipes/` folder).
-
-**Request:** `multipart/form-data` — any of: `title`, `description`, `time_minutes`, `cuisine`, `servings`, `ingredients` (JSON string), `instructions` (JSON string), file `image`.
-
-**Example Response (200 OK):** full `Recipe.serialize()` as in create.
-
-**Error Responses:** `400` validation; `403` not owner; `404` not found; `500` upload/DB.
-
----
-
-### 4. Delete Recipe
-
-**Route:** `DELETE /api/recipes/<recipe_id>/`  
-**Method:** `DELETE`  
-**Authentication:** Required  
-**Description:** Delete recipe (creator only).
-
-**Example Request:** `DELETE /api/recipes/1/`
-
-**Example Response (200 OK):**
-
-```json
-{
-  "success": true,
-  "message": "Recipe deleted"
-}
-```
-
-**Error Responses:** `403`, `404`.
-
----
-
-### 5. Get Recipes by User
-
-**Route:** `GET /api/users/<user_id>/recipes/`  
-**Method:** `GET`  
-**Authentication:** Required  
-**Description:** List recipes by `creator_id` (preview cards).
-
-**Example Request:** `GET /api/users/1/recipes/`
-
-**Example Response (200 OK):**
-
-```json
-{
-  "user_id": 1,
-  "recipes": [
-    {
-      "id": 1,
-      "creator_id": 1,
-      "title": "Chocolate Chip Cookies",
-      "image_url": "https://your-bucket.s3.amazonaws.com/recipe/uuid.jpg",
-      "time_minutes": 30,
-      "cuisine": "American"
-    }
-  ]
-}
-```
-
----
-
-### 6. Get Recipe Feed (Discover)
-
-**Route:** `GET /api/feed/recipes/`  
-**Method:** `GET`  
-**Authentication:** Required  
-**Description:** All recipes for discover: ordered by calendar day (newest days first); within each day, friends’ recipes first. Each preview may include `total_saves_count` (distinct users who saved the recipe via a per-user cookbook named `"saved"`).
-
-**Example Request:** `GET /api/feed/recipes/`
-
-**Example Response (200 OK):**
-
-```json
-{
-  "recipes": [
-    {
-      "id": 1,
-      "creator_id": 2,
-      "title": "Pasta",
-      "image_url": "https://your-bucket.s3.amazonaws.com/recipe/uuid.jpg",
-      "time_minutes": 20,
-      "cuisine": "Italian",
-      "total_saves_count": 5
-    }
-  ]
-}
-```
-
----
-
-### 7. Create or Update Review
-
-**Route:** `POST /api/recipes/<recipe_id>/reviews/`  
-**Method:** `POST`  
-**Authentication:** Required  
-**Content-Type:** `application/json`
-
-**Request body:**
-
-```json
-{
-  "rating": 5,
-  "text": "Absolutely delicious! Will make again."
-}
-```
-
-**Example Response (201)** new review / **(200)** updated review — `Review.serialize()`:
-
-```json
-{
-  "id": 1,
-  "user_id": 1,
-  "recipe_id": 1,
-  "rating": 5,
-  "text": "Absolutely delicious! Will make again.",
-  "created_at": "2026-04-29T10:30:00+00:00",
-  "updated_at": "2026-04-29T10:30:00+00:00"
-}
-```
-
-**Error Responses:** `400`, `404`, `409` — body: `{"error": "Review already exists; retry as an update"}` (race / concurrent create).
-
----
-
-### 8. Get Reviews for Recipe
-
-**Route:** `GET /api/recipes/<recipe_id>/reviews/`  
-**Method:** `GET`  
-**Authentication:** Required  
-
-**Example Request:** `GET /api/recipes/1/reviews/`
-
-**Example Response (200 OK):**
-
-```json
-{
-  "recipe_id": 1,
-  "reviews": [
-    {
-      "id": 2,
-      "user_id": 2,
-      "recipe_id": 1,
-      "rating": 5,
-      "text": "Love this recipe!",
-      "created_at": "2026-04-29T11:00:00+00:00",
-      "updated_at": "2026-04-29T11:00:00+00:00"
-    }
-  ]
-}
-```
-
----
-
-### 9. Delete My Review
-
-**Route:** `DELETE /api/recipes/<recipe_id>/reviews/`  
-**Method:** `DELETE`  
-**Authentication:** Required  
-**Description:** Deletes the **current user’s** review for that recipe.
-
-**Example Response (200 OK):**
-
-```json
-{
-  "success": true,
-  "message": "Review deleted"
-}
-```
-
-**Error Responses:** `404` if this user has no review for that recipe.
-
----
-
-## Error Handling
-
-Most errors from `error()` / `success()` helpers return JSON with an `error` key. The value is usually a **string**, but **Marshmallow validation** failures may pass a **nested object** (field names to message lists), for example:
-
-```json
-{
-  "error": {
-    "username": ["Username is required"]
-  }
-}
-```
-
-Simple string error:
-
-```json
-{
-  "error": "Recipe not found"
-}
-```
-
-The `@require_auth` decorator uses `jsonify` for missing/invalid tokens with the same `{"error": "..."}` shape and HTTP `401`.
-
-### Common HTTP Status Codes
-
-- `200 OK` - Request successful
-- `201 Created` - Resource created successfully
-- `400 Bad Request` - Invalid input or validation error
-- `401 Unauthorized` - Missing or invalid authentication token
-- `403 Forbidden` - Authenticated user doesn't have permission (e.g., trying to delete another user's recipe)
-- `404 Not Found` - Resource not found
-- `409 Conflict` - Resource conflict (e.g., duplicate entry)
-- `500 Internal Server Error` - Server error
-
----
-
-## Notes
-
-- All timestamps are in ISO 8601 format with UTC timezone
-- Passwords are hashed using secure algorithms and never returned in responses
-- Session tokens are generated automatically and should be stored securely on the client
-- Users can only modify/delete their own resources (recipes, cookbooks)
-- Friendship relationships require mutual consent (pending → accepted)
-- `GET /api/cookbooks/<id>/` returns the cookbook if it exists (ownership is enforced on update/delete/add/remove recipe, not on this single GET in the current code).
-- Success responses are JSON bodies produced by `json.dumps`; set `Content-Type: application/json` on the client when sending JSON bodies.
