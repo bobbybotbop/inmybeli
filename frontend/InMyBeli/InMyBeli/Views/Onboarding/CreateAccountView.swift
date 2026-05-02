@@ -69,12 +69,9 @@ struct CreateAccountView: View {
         .background(Theme.Palette.background)
         .onChange(of: selectedPhoto) { _, newItem in
             Task {
-                guard
-                    let data = try? await newItem?.loadTransferable(type: Data.self),
-                    let uiImage = UIImage(data: data),
-                    let jpegData = uiImage.jpegData(compressionQuality: 0.85)
+                guard let data = try? await newItem?.loadTransferable(type: Data.self)
                 else { return }
-                profileImageData = jpegData
+                profileImageData = data
             }
         }
     }
