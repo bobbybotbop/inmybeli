@@ -34,12 +34,11 @@ struct OnboardingFlow: View {
         case .createAccount:
             CreateAccountView { authSession in
                 pendingSession = authSession
-                APIClient.shared.sessionToken = authSession.token
+                session.attachToken(authSession.token)
                 path.append(.cuisinePreferences)
             }
         case .login:
             LoginView { authSession in
-                APIClient.shared.sessionToken = authSession.token
                 session.signIn(user: authSession.user, token: authSession.token)
             }
         case .cuisinePreferences:
@@ -50,7 +49,7 @@ struct OnboardingFlow: View {
         case .findFriends:
             FindFriendsView(
                 currentUser: pendingSession?.user
-                    ?? AppUser(id: 0, name: "", username: "", createdAt: nil),
+                    ?? AppUser(id: 0, name: "", username: "", profileURL: nil, createdAt: nil),
                 onFinish: {
                     if let pending = pendingSession {
                         session.signIn(user: pending.user, token: pending.token)

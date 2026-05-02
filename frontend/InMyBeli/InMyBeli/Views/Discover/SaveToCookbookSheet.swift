@@ -39,9 +39,7 @@ struct SaveToCookbookSheet: View {
     }
 
     private var handle: some View {
-        Capsule()
-            .fill(Theme.Palette.lightBrown)
-            .frame(width: 97, height: 4)
+        SheetHandle()
             .padding(.top, 10)
             .padding(.bottom, 20)
     }

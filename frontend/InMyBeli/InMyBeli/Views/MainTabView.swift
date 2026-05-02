@@ -34,7 +34,7 @@ struct MainTabView: View {
 
     private func placeholder(_ label: String) -> some View {
         Text(label)
-            .font(.system(size: 25, weight: .medium))
+            .font(Theme.Typography.title)
             .foregroundColor(Theme.Palette.darkBrown)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.Palette.background)

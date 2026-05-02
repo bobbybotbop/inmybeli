@@ -36,7 +36,7 @@ struct CookbookDetailView: View {
     private var titleBlock: some View {
         VStack(spacing: 5) {
             Text(detail?.name ?? cookbook.name)
-                .font(.system(size: 25, weight: .medium))
+                .font(Theme.Typography.title)
                 .tracking(0.25)
                 .foregroundColor(Theme.Palette.darkBrown)
                 .multilineTextAlignment(.center)

@@ -239,7 +239,7 @@ private struct FriendCard: View {
 #Preview {
     NavigationStack {
         FindFriendsView(
-            currentUser: AppUser(id: 1, name: "Ronald", username: "ronald", createdAt: nil),
+            currentUser: AppUser(id: 1, name: "Ronald", username: "ronald", profileURL: nil, createdAt: nil),
             onFinish: {}
         )
     }

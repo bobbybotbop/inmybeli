@@ -51,7 +51,7 @@ struct CookbooksView: View {
                 .font(.system(size: 22, weight: .regular))
                 .foregroundColor(Theme.Palette.darkBrown)
             Text("Cookbooks")
-                .font(.system(size: 25, weight: .medium))
+                .font(Theme.Typography.title)
                 .tracking(0.25)
                 .foregroundColor(Theme.Palette.darkBrown)
         }

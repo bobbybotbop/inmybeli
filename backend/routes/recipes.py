@@ -23,7 +23,8 @@ from backend.routes.dependencies import (
     CreateReviewSchema,
     upload_to_s3,
     delete_from_s3,
-    allowed_file
+    allowed_file,
+    DEFAULT_RECIPE_IMAGE,
 )
 from backend.models.assocTables import cookbookRecipes
 
@@ -124,7 +125,7 @@ def create_recipe():
 
     file = request.files.get("image")
     recipe_image_s3_key = None
-    recipe_image_url = None
+    recipe_image_url = DEFAULT_RECIPE_IMAGE
 
     if file:
         try:

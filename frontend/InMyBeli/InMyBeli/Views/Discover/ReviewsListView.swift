@@ -40,7 +40,7 @@ struct ReviewsListView: View {
     private var header: some View {
         VStack(spacing: 6) {
             Text(recipeTitle ?? "Reviews")
-                .font(.system(size: 25, weight: .medium))
+                .font(Theme.Typography.title)
                 .tracking(0.25)
                 .foregroundColor(Theme.Palette.darkBrown)
 

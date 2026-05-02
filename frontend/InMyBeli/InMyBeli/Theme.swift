@@ -18,4 +18,8 @@ enum Theme {
         static let tabItem: CGFloat = 14
         static let search: CGFloat = 12
     }
+
+    enum Typography {
+        static let title = Font.system(size: 25, weight: .medium)
+    }
 }

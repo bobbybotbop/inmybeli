@@ -23,9 +23,7 @@ struct WriteReviewView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Capsule()
-                .fill(Theme.Palette.lightBrown)
-                .frame(width: 97, height: 4)
+            SheetHandle()
                 .padding(.top, 14)
 
             ScrollView {

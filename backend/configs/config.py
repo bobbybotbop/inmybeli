@@ -20,3 +20,4 @@ ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif', 'svg'
 
 # Default image
 DEFAULT_PFP = "https://appdev-inmybeli.s3.us-east-2.amazonaws.com/assets/blankpfp.png"
+DEFAULT_RECIPE_IMAGE = "https://appdev-inmybeli.s3.us-east-2.amazonaws.com/assets/blankrecipe.png"

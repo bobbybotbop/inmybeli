@@ -115,7 +115,7 @@ struct CreateRecipeView: View {
             text: $title,
             prompt: Text("Recipe name").foregroundColor(Theme.Palette.darkBrown.opacity(0.4))
         )
-        .font(.system(size: 25, weight: .medium))
+        .font(Theme.Typography.title)
         .foregroundStyle(Theme.Palette.darkBrown)
         .tint(Theme.Palette.lightBrown)
         .focused($titleFocused)
@@ -185,7 +185,7 @@ struct CreateRecipeView: View {
                     .font(.system(size: 72))
                     .foregroundColor(Theme.Palette.darkBrown)
                 Text("Ingredient List")
-                    .font(.system(size: 25, weight: .medium))
+                    .font(Theme.Typography.title)
                     .foregroundColor(Theme.Palette.darkBrown)
                     .padding(.leading, 13)
             }
@@ -233,7 +233,7 @@ struct CreateRecipeView: View {
                     .font(.system(size: 60))
                     .foregroundColor(Theme.Palette.darkBrown)
                 Text("Steps")
-                    .font(.system(size: 25, weight: .medium))
+                    .font(Theme.Typography.title)
                     .foregroundColor(Theme.Palette.darkBrown)
             }
 
@@ -375,9 +375,7 @@ struct AddIngredientSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Capsule()
-                .fill(Color(hex: "888888").opacity(0.3))
-                .frame(width: 96, height: 4)
+            SheetHandle(color: Color(hex: "888888").opacity(0.3))
                 .padding(.top, 10)
 
             VStack(alignment: .leading, spacing: 30) {
@@ -456,9 +454,7 @@ struct AddStepSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Capsule()
-                .fill(Color(hex: "888888").opacity(0.3))
-                .frame(width: 96, height: 4)
+            SheetHandle(color: Color(hex: "888888").opacity(0.3))
                 .padding(.top, 10)
 
             VStack(alignment: .leading, spacing: 30) {

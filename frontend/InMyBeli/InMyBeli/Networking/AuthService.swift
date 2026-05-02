@@ -51,7 +51,6 @@ final class AuthService {
             )
         }
 
-        APIClient.shared.sessionToken = response.sessionToken
         return AuthSession(user: response.user, token: response.sessionToken)
     }
 
@@ -67,7 +66,6 @@ final class AuthService {
             body: Body(username: username, password: password),
             as: Response.self
         )
-        APIClient.shared.sessionToken = response.token
         return AuthSession(user: response.user, token: response.token)
     }
 }

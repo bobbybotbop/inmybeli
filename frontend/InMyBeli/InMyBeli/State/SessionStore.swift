@@ -9,15 +9,18 @@ final class SessionStore: ObservableObject {
 
     var isAuthenticated: Bool { currentUser != nil }
 
-    func signIn(user: AppUser, token: String) {
-        currentUser = user
+    func attachToken(_ token: String?) {
         sessionToken = token
         APIClient.shared.sessionToken = token
     }
 
+    func signIn(user: AppUser, token: String) {
+        currentUser = user
+        attachToken(token)
+    }
+
     func signOut() {
         currentUser = nil
-        sessionToken = nil
-        APIClient.shared.sessionToken = nil
+        attachToken(nil)
     }
 }

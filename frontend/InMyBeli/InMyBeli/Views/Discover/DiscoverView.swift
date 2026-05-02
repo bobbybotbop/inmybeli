@@ -23,7 +23,7 @@ struct DiscoverView: View {
 
                     VStack(alignment: .leading, spacing: 18) {
                         Text("Popular Recipes")
-                            .font(.system(size: 25, weight: .medium))
+                            .font(Theme.Typography.title)
                             .tracking(0.25)
                             .foregroundColor(Theme.Palette.darkBrown)
 
