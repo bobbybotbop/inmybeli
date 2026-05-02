@@ -143,9 +143,10 @@ struct RecipeDetailView: View {
                     )
             }
         }
-        .frame(height: 264)
+        .frame(maxWidth: 560, maxHeight: 264)
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .padding(.horizontal, 24)
+        .frame(maxWidth: .infinity)
     }
 
     private var actionButtons: some View {
