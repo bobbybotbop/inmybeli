@@ -21,11 +21,6 @@ struct CookbookDetailView: View {
         }
         .background(Theme.Palette.background)
         .scrollIndicators(.hidden)
-        .overlay(alignment: .bottomTrailing) {
-            addRecipeButton
-                .padding(.trailing, 16)
-                .padding(.bottom, 24)
-        }
         .toolbar {
             ToolbarItem(placement: .principal) { EmptyView() }
         }
@@ -87,30 +82,6 @@ struct CookbookDetailView: View {
             }
         }
     }
-
-    private var addRecipeButton: some View {
-        HStack(spacing: 5) {
-            Image(systemName: "plus")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(Theme.Palette.cream)
-            Text("Add Recipe")
-                .font(.system(size: 15, weight: .regular))
-                .tracking(0.15)
-                .foregroundColor(Theme.Palette.cream)
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Theme.Palette.darkBrown)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Theme.Palette.cream, lineWidth: 1)
-        )
-        .shadow(color: Color.white.opacity(0.4), radius: 8, x: 2, y: 4)
-    }
-
     private func load() async {
         isLoading = true
         loadError = nil
