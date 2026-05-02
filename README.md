@@ -23,4 +23,6 @@ See backend/API_SPECIFICATIONS.md for full endpoint documentation and notes.
 
 # Screenshots
 
-<!-- Add screenshots here -->
+<img width="367" height="756" alt="IMG_1174" src="https://github.com/user-attachments/assets/82af1833-4bcd-45cd-8379-a3a0878d91c6" />
+
+<img width="367" height="756" alt="IMG_4373" src="https://github.com/user-attachments/assets/939ba327-2fe8-48e3-a077-d05d86621b17" />
