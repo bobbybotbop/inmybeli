@@ -9,7 +9,7 @@ http://localhost:5001/api
 Blueprints are mounted as follows (full paths below each endpoint):
 
 | Area      | Prefix           |
-|-----------|------------------|
+| --------- | ---------------- |
 | Users     | `/api/users`     |
 | Friends   | `/api/friends`   |
 | Cookbooks | `/api/cookbooks` |
@@ -28,7 +28,6 @@ Authorization: Bearer <session_token>
 - `POST /users/create`
 - `POST /users/login`
 - `POST /users/autologin`
-- `GET /users/tokens`
 
 ---
 
@@ -1336,50 +1335,3 @@ curl -X GET http://localhost:5000/api/friends/2 \
 - `400 Bad Request` - Cannot check friendship with yourself
 - `401 Unauthorized` - Missing or invalid token
 - `404 Not Found` - Friend not found
-
----
-
-## Error Handling
-
-Most errors from `error()` / `success()` helpers return JSON with an `error` key. The value is usually a **string**, but **Marshmallow validation** failures may pass a **nested object** (field names to message lists), for example:
-
-```json
-{
-  "error": {
-    "username": ["Username is required"]
-  }
-}
-```
-
-Simple string error:
-
-```json
-{
-  "error": "Recipe not found"
-}
-```
-
-The `@require_auth` decorator uses `jsonify` for missing/invalid tokens with the same `{"error": "..."}` shape and HTTP `401`.
-
-### Common HTTP Status Codes
-
-- `200 OK` - Request successful
-- `201 Created` - Resource created successfully
-- `400 Bad Request` - Invalid input or validation error
-- `401 Unauthorized` - Missing or invalid authentication token
-- `403 Forbidden` - Authenticated user doesn't have permission (e.g., trying to delete another user's recipe)
-- `404 Not Found` - Resource not found
-- `409 Conflict` - Resource conflict (e.g., duplicate entry)
-- `500 Internal Server Error` - Server error
-
----
-
-## Notes
-
-- All timestamps are in ISO 8601 format with UTC timezone
-- Passwords are hashed using secure algorithms and never returned in responses
-- Session tokens are generated automatically and should be stored securely on the client
-- Users can only modify/delete their own resources (recipes, cookbooks)
-- Friendship relationships require mutual consent (pending → accepted)
-- `GET /api/cookbooks/<id>/` returns the cookbook if it exists (ownership is enforced on update/delete/add/remove recipe, not on this single GET in the current code).
-- Success responses are JSON bodies produced by `json.dumps`; set `Content-Type: application/json` on the client when sending JSON bodies.

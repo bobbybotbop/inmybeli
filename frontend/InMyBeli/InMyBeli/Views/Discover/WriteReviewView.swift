@@ -54,15 +54,7 @@ struct WriteReviewView: View {
             .scrollDismissesKeyboard(.interactively)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(
-            UnevenRoundedRectangle(
-                topLeadingRadius: 20,
-                bottomLeadingRadius: 0,
-                bottomTrailingRadius: 0,
-                topTrailingRadius: 20
-            )
-            .fill(Theme.Palette.background)
-        )
+        .background(Theme.Palette.background)
     }
 
     private var header: some View {

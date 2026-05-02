@@ -23,7 +23,6 @@ from backend.routes.dependencies import (
     CreateReviewSchema,
     upload_to_s3,
     delete_from_s3,
-    allowed_file,
     DEFAULT_RECIPE_IMAGE,
 )
 from backend.models.assocTables import cookbookRecipes

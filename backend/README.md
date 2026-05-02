@@ -1,6 +1,4 @@
-# inmybeli backend (Flask)
-
-Unprotected (temporary) account endpoints for local development.
+# inmybeli backen
 
 ## Setup
 
@@ -25,24 +23,4 @@ The server runs on `http://127.0.0.1:5001`.
 
 ## API
 
-### Create account
-
-```bash
-curl -X POST http://127.0.0.1:5001/api/create ^
-  -H "Content-Type: application/json" ^
-  -d "{\"name\":\"Bobby\",\"username\":\"bobby1\",\"email\":\"bobby@example.com\",\"password\":\"secret\"}"
-```
-
-### Login
-
-```bash
-curl -X POST http://127.0.0.1:5001/api/login ^
-  -H "Content-Type: application/json" ^
-  -d "{\"email\":\"bobby@example.com\",\"password\":\"secret\"}"
-```
-
-### Get user
-
-```bash
-curl http://127.0.0.1:5001/api/users/1
-```
+Look at API specifications for all the routes.

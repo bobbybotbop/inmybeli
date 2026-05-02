@@ -7,6 +7,7 @@ private enum RecipeDetailTab {
 struct RecipeDetailView: View {
     let recipeId: Int
     let initialTitle: String?
+    let initialImageUrl: String?
 
     @Environment(\.dismiss) private var dismiss
     @State private var selectedTab: RecipeDetailTab = .ingredients
@@ -19,11 +20,13 @@ struct RecipeDetailView: View {
     init(recipeId: Int, initialTitle: String? = nil) {
         self.recipeId = recipeId
         self.initialTitle = initialTitle
+        self.initialImageUrl = nil
     }
 
     init(preview: RecipePreview) {
         self.recipeId = preview.id
         self.initialTitle = preview.title
+        self.initialImageUrl = preview.imageUrl
     }
 
     var body: some View {
@@ -120,8 +123,9 @@ struct RecipeDetailView: View {
     }
 
     private var heroImage: some View {
-        Group {
-            if let imageUrl = recipe?.imageUrl, let url = URL(string: imageUrl) {
+        let urlString = recipe?.imageUrl ?? initialImageUrl
+        return Group {
+            if let urlString, let url = URL(string: urlString) {
                 AsyncImage(url: url) { phase in
                     switch phase {
                     case .success(let image):
@@ -293,11 +297,9 @@ private struct ActionIconButton: View {
     var body: some View {
         VStack(spacing: 6) {
             ZStack {
-                if bordered {
-                    Circle()
-                        .stroke(Theme.Palette.darkBrown, lineWidth: 1)
-                        .frame(width: 40, height: 40)
-                }
+                Circle()
+                    .stroke(Theme.Palette.darkBrown, lineWidth: 1)
+                    .frame(width: 40, height: 40)
                 Image(systemName: icon)
                     .font(.system(size: 18, weight: .regular))
                     .foregroundColor(Theme.Palette.darkBrown)

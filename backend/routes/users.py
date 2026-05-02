@@ -16,9 +16,6 @@ from backend.routes.dependencies import (
     AutoLoginSchema,
     require_auth,
     g,
-    s3_client,
-    S3_BUCKET_NAME,
-    ALLOWED_EXTENSIONS,
     delete_from_s3,
     upload_to_s3,
     DEFAULT_PFP

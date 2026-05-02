@@ -60,7 +60,11 @@ struct CreateCookbookView: View {
                 .font(.system(size: 15, weight: .regular))
                 .foregroundColor(Theme.Palette.darkBrown)
                 .padding(.leading, 4)
-            TextField("Themes of recipes?", text: $name)
+            TextField(
+                "",
+                text: $name,
+                prompt: Text("Themes of recipes?").foregroundColor(Theme.Palette.darkBrown.opacity(0.4))
+            )
                 .font(.system(size: 15, weight: .regular))
                 .foregroundColor(Theme.Palette.darkBrown)
                 .tint(Theme.Palette.lightBrown)
@@ -76,32 +80,36 @@ struct CreateCookbookView: View {
     }
 
     private var descriptionField: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Description")
+                .font(.system(size: 15, weight: .regular))
+                .foregroundColor(Theme.Palette.darkBrown)
+                .padding(.leading, 4)
             ZStack(alignment: .topLeading) {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Color(hex: "EFEFEF"))
+
                 if description.isEmpty {
-                    Text("Description")
-                        .font(.system(size: 15, weight: .light))
-                        .foregroundColor(Color(hex: "7B7B7B"))
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 14)
+                    Text("Any specific details...")
+                        .font(.system(size: 15, weight: .regular))
+                        .foregroundColor(Theme.Palette.darkBrown.opacity(0.4))
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 15)
                         .allowsHitTesting(false)
                 }
+
                 TextEditor(text: $description)
                     .font(.system(size: 15, weight: .regular))
                     .foregroundColor(Theme.Palette.darkBrown)
                     .tint(Theme.Palette.lightBrown)
                     .scrollContentBackground(.hidden)
-                    .padding(.horizontal, 12)
+                    .background(Color.clear)
+                    .autocorrectionDisabled()
+                    .padding(.horizontal, 16)
                     .padding(.vertical, 8)
-                    .frame(height: 96)
             }
+            .frame(height: 96)
         }
-        .background(Theme.Palette.background)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Color(hex: "D8D8D8"), lineWidth: 1)
-        )
     }
 
     private var actions: some View {
