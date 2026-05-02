@@ -9,6 +9,8 @@ struct ProfileView: View {
     @EnvironmentObject var session: SessionStore
     @State private var selectedSection: ProfileSection = .reviews
     @State private var recipes: [RecipePreview] = []
+    @State private var reviews: [Review] = []
+    @State private var reviewRecipes: [Int: Recipe] = [:]
     @State private var friendRequests: [FriendRequest] = []
     @State private var friendCount = 0
     @State private var isLoading = false
@@ -175,7 +177,21 @@ struct ProfileView: View {
 
     @ViewBuilder
     private var reviewsContent: some View {
-        emptyState(icon: "star", message: "No reviews yet.\nRate recipes you've tried!")
+        if isLoading && reviews.isEmpty {
+            loadingView
+        } else if reviews.isEmpty {
+            emptyState(icon: "star", message: "No reviews yet.\nRate recipes you've tried!")
+        } else {
+            VStack(spacing: 16) {
+                ForEach(reviews) { review in
+                    ReviewCard(
+                        review: review,
+                        recipe: reviewRecipes[review.recipeId],
+                        userAvatarURL: session.currentUser?.profileURL
+                    )
+                }
+            }
+        }
     }
 
     @ViewBuilder
@@ -228,10 +244,28 @@ struct ProfileView: View {
         async let recipesTask: [RecipePreview] = RecipeService.shared.fetchRecipes(forUserId: userId)
         async let requestsTask: [FriendRequest] = FriendService.shared.fetchFriendRequests()
         async let friendsTask: [FriendCandidate] = FriendService.shared.fetchFriends(userId: userId)
+        async let reviewsTask: [Review] = RecipeService.shared.fetchUserReviews(userId: userId)
 
         do { recipes = try await recipesTask } catch {}
         do { friendRequests = try await requestsTask } catch {}
         do { friendCount = (try await friendsTask).count } catch {}
+        do {
+            let fetched = try await reviewsTask
+            reviews = fetched
+            var recipeMap: [Int: Recipe] = [:]
+            await withTaskGroup(of: (Int, Recipe?).self) { group in
+                for review in fetched {
+                    group.addTask {
+                        let r = try? await RecipeService.shared.fetchRecipe(id: review.recipeId)
+                        return (review.recipeId, r)
+                    }
+                }
+                for await (id, recipe) in group {
+                    if let recipe { recipeMap[id] = recipe }
+                }
+            }
+            reviewRecipes = recipeMap
+        } catch {}
     }
 
     private func handleAccept(_ request: FriendRequest) async {
@@ -254,6 +288,76 @@ struct ProfileView: View {
     }
 }
 
+// MARK: - ReviewCard
+
+private struct ReviewCard: View {
+    let review: Review
+    let recipe: Recipe?
+    let userAvatarURL: String?
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            avatarView
+            VStack(alignment: .leading, spacing: 6) {
+                Text(recipe?.title ?? "Recipe")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(Theme.Palette.darkBrown)
+                starRating
+                if let text = review.text, !text.isEmpty {
+                    Text(text)
+                        .font(.system(size: 14))
+                        .foregroundColor(.black.opacity(0.85))
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(hex: "F6F6F6"))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: Color.black.opacity(0.08), radius: 12, x: 2, y: 4)
+    }
+
+    @ViewBuilder
+    private var avatarView: some View {
+        let size: CGFloat = 60
+        let placeholder = Circle()
+            .fill(Theme.Palette.placeholder)
+            .frame(width: size, height: size)
+            .overlay(
+                Image(systemName: "person.fill")
+                    .font(.system(size: size * 0.44, weight: .light))
+                    .foregroundColor(Theme.Palette.lightBrown)
+            )
+
+        if let urlString = userAvatarURL, let url = URL(string: urlString) {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: size, height: size)
+                        .clipShape(Circle())
+                default:
+                    placeholder
+                }
+            }
+        } else {
+            placeholder
+        }
+    }
+
+    private var starRating: some View {
+        HStack(spacing: 4) {
+            ForEach(1...5, id: \.self) { i in
+                Image(systemName: i <= review.rating ? "star.fill" : "star")
+                    .font(.system(size: 16))
+                    .foregroundColor(Theme.Palette.orangeBrown)
+            }
+        }
+    }
+}
+
 // MARK: - FriendRequestRow
 
 struct FriendRequestRow: View {
@@ -269,75 +373,76 @@ struct FriendRequestRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .top, spacing: 16) {
             Circle()
                 .fill(Theme.Palette.placeholder)
-                .frame(width: 56, height: 56)
+                .frame(width: 72, height: 72)
                 .overlay(
                     Text(initial)
-                        .font(.system(size: 20, weight: .medium))
+                        .font(.system(size: 26, weight: .medium))
                         .foregroundColor(Theme.Palette.lightBrown)
                 )
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(request.sender.name ?? request.sender.username)
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(Theme.Palette.darkBrown)
                     .lineLimit(1)
                 Text("@\(request.sender.username)")
                     .font(.system(size: 13))
                     .foregroundColor(Color(hex: "888888"))
                     .lineLimit(1)
-            }
 
-            Spacer(minLength: 8)
-
-            if isProcessing {
-                ProgressView()
-                    .tint(Theme.Palette.lightBrown)
-                    .frame(width: 20, height: 20)
-            } else {
-                HStack(spacing: 8) {
-                    Button {
-                        isProcessing = true
-                        Task {
-                            await onAccept()
-                            isProcessing = false
+                if isProcessing {
+                    ProgressView()
+                        .tint(Theme.Palette.lightBrown)
+                        .frame(height: 36)
+                        .padding(.top, 6)
+                } else {
+                    HStack(spacing: 12) {
+                        Button {
+                            isProcessing = true
+                            Task {
+                                await onAccept()
+                                isProcessing = false
+                            }
+                        } label: {
+                            Text("Accept")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(Theme.Palette.cream)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 8)
+                                .background(Theme.Palette.darkBrown)
+                                .clipShape(Capsule())
                         }
-                    } label: {
-                        Text("Accept")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(Theme.Palette.cream)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(Theme.Palette.darkBrown)
-                            .clipShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
+                        .buttonStyle(.plain)
 
-                    Button {
-                        isProcessing = true
-                        Task {
-                            await onDecline()
-                            isProcessing = false
+                        Button {
+                            isProcessing = true
+                            Task {
+                                await onDecline()
+                                isProcessing = false
+                            }
+                        } label: {
+                            Text("Deny")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(Color(hex: "A4A4A4"))
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 8)
+                                .background(Color(hex: "F6F6F6"))
+                                .overlay(
+                                    Capsule().stroke(Color(hex: "A4A4A4"), lineWidth: 1)
+                                )
+                                .clipShape(Capsule())
                         }
-                    } label: {
-                        Text("Deny")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(Color(hex: "A4A4A4"))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(Color(hex: "F6F6F6"))
-                            .overlay(
-                                Capsule().stroke(Color(hex: "A4A4A4"), lineWidth: 1)
-                            )
-                            .clipShape(Capsule())
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+                    .padding(.top, 6)
                 }
             }
         }
         .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(hex: "F6F6F6"))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .shadow(color: Color.black.opacity(0.08), radius: 12, x: 2, y: 4)

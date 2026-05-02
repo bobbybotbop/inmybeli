@@ -24,6 +24,16 @@ private struct ReviewsResponse: Decodable {
     }
 }
 
+private struct UserReviewsResponse: Decodable {
+    let userId: Int
+    let reviews: [Review]
+
+    enum CodingKeys: String, CodingKey {
+        case reviews
+        case userId = "user_id"
+    }
+}
+
 final class RecipeService {
     static let shared = RecipeService()
 
@@ -88,6 +98,14 @@ final class RecipeService {
         let response = try await client.get(
             "recipes/\(recipeId)/reviews/",
             as: ReviewsResponse.self
+        )
+        return response.reviews
+    }
+
+    func fetchUserReviews(userId: Int) async throws -> [Review] {
+        let response = try await client.get(
+            "users/\(userId)/reviews/",
+            as: UserReviewsResponse.self
         )
         return response.reviews
     }

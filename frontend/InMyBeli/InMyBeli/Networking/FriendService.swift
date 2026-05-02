@@ -4,8 +4,14 @@ private struct SearchResultsResponse: Decodable {
     let results: [FriendCandidate]
 }
 
-private struct FriendRequestsResponse: Decodable {
-    let requests: [FriendRequest]
+private struct PendingRequestsResponse: Decodable {
+    let userId: Int
+    let receivedPendingRequests: [FriendCandidate]
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case receivedPendingRequests = "received_pending_requests"
+    }
 }
 
 private struct FriendsListResponse: Decodable {
@@ -50,31 +56,33 @@ final class FriendService {
     }
 
     func fetchFriendRequests() async throws -> [FriendRequest] {
-        let response = try await client.get("friends/requests/", as: FriendRequestsResponse.self)
-        return response.requests
+        let response = try await client.get("friends/pending/received/", as: PendingRequestsResponse.self)
+        return response.receivedPendingRequests.map { candidate in
+            FriendRequest(id: candidate.id, sender: candidate)
+        }
     }
 
     func fetchFriends(userId: Int) async throws -> [FriendCandidate] {
-        let response = try await client.get("users/\(userId)/friends/", as: FriendsListResponse.self)
+        let response = try await client.get("friends/", as: FriendsListResponse.self)
         return response.friends
     }
 
     func acceptFriendRequest(requestId: Int) async throws {
-        struct Empty: Encodable {}
+        struct Body: Encodable { let friend_id: Int }
         struct EmptyResponse: Decodable {}
         _ = try await client.post(
-            "friends/requests/\(requestId)/accept/",
-            body: Empty(),
+            "friends/accept/",
+            body: Body(friend_id: requestId),
             as: EmptyResponse.self
         )
     }
 
     func declineFriendRequest(requestId: Int) async throws {
-        struct Empty: Encodable {}
+        struct Body: Encodable { let friend_id: Int }
         struct EmptyResponse: Decodable {}
         _ = try await client.post(
-            "friends/requests/\(requestId)/decline/",
-            body: Empty(),
+            "friends/decline/",
+            body: Body(friend_id: requestId),
             as: EmptyResponse.self
         )
     }
